@@ -29,6 +29,7 @@ interface BasicScriptingEngineState {
     chat?: Chat;
     setVar?: (key:string, value:string) => void,
     getVar?: (key:string) => string,
+    stopSendingState?: { value: boolean },
 }
 
 interface LuaScriptingEngineState extends BasicScriptingEngineState {
@@ -67,21 +68,26 @@ export async function runScripted(code:string, arg:{
     const mode = arg.mode ?? 'manual'
 
     let chat = arg.chat ?? getCurrentChat()
-    let stopSending = false
-    console.log('🟢 stopSending initialized to false')
     let lowLevelAccess = arg.lowLevelAccess ?? false
 
     if(type === 'lua'){
         await ensureLuaFactory()
     }
     let ScriptingEngineState = await getOrCreateEngineState(mode, type);
+
+    if(!ScriptingEngineState.stopSendingState){
+        ScriptingEngineState.stopSendingState = { value: false }
+    }
+    const stopSendingState = ScriptingEngineState.stopSendingState
+    stopSendingState.value = false
+    console.log('🟢 stopSending initialized to', stopSendingState.value)
     
     return await ScriptingEngineState.mutex.runExclusive(async () => {
-        console.log('🔍 [runScripted] Entering mutex, stopSending:', stopSending)
+        console.log('🔍 [runScripted] Entering mutex, stopSending:', stopSendingState.value)
         ScriptingEngineState.chat = chat
         ScriptingEngineState.setVar = setVar
         ScriptingEngineState.getVar = getVar
-        console.log('🔍 [runScripted] After setting engine state, stopSending:', stopSending)
+        console.log('🔍 [runScripted] After setting engine state, stopSending:', stopSendingState.value)
         if (code !== ScriptingEngineState.code) {
             let declareAPI:(name: string, func:Function) => void
 
@@ -116,14 +122,14 @@ export async function runScripted(code:string, arg:{
                 return getGlobalChatVar(key)
             })
             declareAPI('stopChat', (id:string) => {
-                console.log('🔴 stopChat called! ID:', id, 'current stopSending:', stopSending)
+                console.log('🔴 stopChat called! ID:', id, 'current stopSending:', stopSendingState.value)
                 if(!ScriptingSafeIds.has(id)){
                     console.log('🔴 stopChat failed - ID not valid')
                     return
                 }
                 console.log('🔴 stopChat success - setting stopSending = true')
-                stopSending = true
-                console.log('🔴 stopChat after setting - stopSending:', stopSending)
+                stopSendingState.value = true
+                console.log('🔴 stopChat after setting - stopSending:', stopSendingState.value)
             })
             declareAPI('alertError', (id:string, value:string) => {
                 if(!ScriptingSafeIds.has(id)){
@@ -979,10 +985,10 @@ export async function runScripted(code:string, arg:{
             }
         }
         let res:any
-        console.log('🔍 [runScripted] Before Lua execution, stopSending:', stopSending)
+        console.log('🔍 [runScripted] Before Lua execution, stopSending:', stopSendingState.value)
         if(ScriptingEngineState.type === 'lua'){
             const luaEngine = ScriptingEngineState.engine
-            console.log('🟡 About to execute Lua, stopSending:', stopSending)
+            console.log('🟡 About to execute Lua, stopSending:', stopSendingState.value)
             try {
                 switch(mode){
                     case 'input':{
@@ -1002,9 +1008,9 @@ export async function runScripted(code:string, arg:{
                     case 'start':{
                         const func = luaEngine.global.get('onStart')
                         if(func){
-                            console.log('🔍 [runScripted] About to call onStart, stopSending:', stopSending)
+                            console.log('🔍 [runScripted] About to call onStart, stopSending:', stopSendingState.value)
                             res = await func(accessKey)
-                            console.log('🔍 [runScripted] After onStart call, stopSending:', stopSending, 'result:', res)
+                            console.log('🔍 [runScripted] After onStart call, stopSending:', stopSendingState.value, 'result:', res)
                         }
                         break
                     }
@@ -1029,19 +1035,19 @@ export async function runScripted(code:string, arg:{
                     default:{
                         const func = luaEngine.global.get(mode)
                         if(func){
-                            console.log('🔍 [runScripted] Before calling Lua function, stopSending:', stopSending)
+                            console.log('🔍 [runScripted] Before calling Lua function, stopSending:', stopSendingState.value)
                             res = await func(accessKey)
-                            console.log('🔍 [runScripted] After calling Lua function, stopSending:', stopSending)
+                            console.log('🔍 [runScripted] After calling Lua function, stopSending:', stopSendingState.value)
                         }
                         break
                     }
-                }   
-                console.log('🟡 Lua function result:', res, 'stopSending before check:', stopSending)
+                }
+                console.log('🟡 Lua function result:', res, 'stopSending before check:', stopSendingState.value)
                 if(res === false){
                     console.log('🟡 Lua returned false, setting stopSending = true')
-                    stopSending = true
+                    stopSendingState.value = true
                 }
-                console.log('🟡 stopSending after res check:', stopSending)
+                console.log('🟡 stopSending after res check:', stopSendingState.value)
             } catch (error) {
                 console.error(error)
             }
@@ -1082,10 +1088,10 @@ export async function runScripted(code:string, arg:{
         ScriptingLowLevelIds.delete(accessKey)
         chat = ScriptingEngineState.chat
 
-        console.log('� [runScripted] After cleanup, stopSending:', stopSending)
-        console.log('�🟢 Final stopSending value:', stopSending)
+        console.log('� [runScripted] After cleanup, stopSending:', stopSendingState.value)
+        console.log('�🟢 Final stopSending value:', stopSendingState.value)
         return {
-            stopSending, chat, res
+            stopSending: stopSendingState.value, chat, res
         }
     })
 }
