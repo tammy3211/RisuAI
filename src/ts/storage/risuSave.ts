@@ -119,6 +119,10 @@ export class RisuSaveEncoder {
             name: 'modules'
         });
         for( const character of data.characters) {
+            // 0번 인덱스(Save 폴더 봇)는 저장하지 않음
+            if (data.characters.indexOf(character) === 0) {
+                continue;
+            }
             this.blocks[character.chaId] = await this.encodeBlock({
                 compression,
                 data: JSON.stringify(character),
@@ -147,6 +151,10 @@ export class RisuSaveEncoder {
 
         const savedId = new Set<string>();
         for(const character of data.characters) {
+            // 0번 인덱스(Save 폴더 봇)는 저장하지 않음
+            if (data.characters.indexOf(character) === 0) {
+                continue;
+            }
             const index = toSave.character.indexOf(character.chaId);
             if (index !== -1) {
                 this.blocks[character.chaId] = await this.encodeBlock({

@@ -13,7 +13,7 @@
     QuickSettings
 
   } from "../../ts/stores.svelte";
-    import { setDatabase, type folder } from "../../ts/storage/database.svelte";
+    import { setDatabase, type folder, type character } from "../../ts/storage/database.svelte";
     import { DBState } from 'src/ts/stores.svelte';
     import BarIcon from "./BarIcon.svelte";
     import SidebarIndicator from "./SidebarIndicator.svelte";
@@ -32,6 +32,7 @@
   addCharacter,
     changeChar,
     getCharImage,
+    characterFormatUpdate,
   } from "../../ts/characters";
     import CharConfig from "./CharConfig.svelte";
     import { language } from "../../lang";
@@ -49,6 +50,11 @@
   import { sideBarSize } from "src/ts/gui/guisize";
   import DevTool from "./DevTool.svelte";
     import QuickSettingsGui from "../Others/QuickSettingsGUI.svelte";
+  import { loadSaveFolderBots, type SaveFolderBot } from "../../ts/BotMaker/saveFolderLoader.svelte";
+  import { isTauri } from "src/ts/globalApi.svelte";
+  import { parseBotJson } from "../../ts/BotMaker/BotJsonParser";
+  import { currentSaveFolderBot } from "../../ts/saveFolderSync";
+  
   let sideBarMode = $state(0);
   let editMode = $state(false);
   let menuMode = $state(0);
@@ -68,6 +74,10 @@
   let IconRounded = $state(false)
   let openFolders:string[] = $state([])
   let currentDrag: DragData = $state(null)
+  
+  // Save 폴더 봇들
+  let saveFolderBots: SaveFolderBot[] = $state([])
+  let saveFolderOpen = $state(false)
   interface Props {
     openGrid?: any;
     hidden?: boolean;
@@ -83,7 +93,8 @@
     for (const id of DBState.db.characterOrder) {
       if(typeof(id) === 'string'){
         const index = idObject[id] ?? -1
-        if(index !== -1){
+        // 0번 인덱스는 Save 폴더 봇용 가상 슬롯이므로 목록에서 제외
+        if(index !== -1 && index !== 0){
           const cha = DBState.db.characters[index]
           newCharImages.push({
             img:cha.image ?? "",
@@ -98,7 +109,8 @@
         let folderCharImages: sortTypeNormal[] = []
         for(const id of folder.data){
           const index = idObject[id] ?? -1
-          if(index !== -1){
+          // 0번 인덱스 제외
+          if(index !== -1 && index !== 0){
             const cha = DBState.db.characters[index]
             folderCharImages.push({
               img:cha.image ?? "",
@@ -124,6 +136,15 @@
     if(IconRounded !== DBState.db.roundIcons){
       IconRounded = DBState.db.roundIcons
     }
+  })
+
+  // Save 폴더 스캔
+  $effect(() => {
+    loadSaveFolderBots().then(bots => {
+      console.log('[SaveFolder] Loaded bots:', bots)
+      console.log('[SaveFolder] isTauri:', isTauri)
+      saveFolderBots = bots
+    })
   })
 
 
@@ -675,6 +696,62 @@
         ></BaseRoundedButton
       >
     </div>
+    
+    {#if saveFolderBots.length > 0}
+      <div class="mt-4 border-t border-selected pt-2 w-full"></div>
+      <div class="group relative flex items-center px-2" role="listitem">
+        <SidebarIndicator isActive={false} />
+        <div role="button" tabindex="0">
+          <SidebarAvatar src="slot" size="56" rounded={IconRounded} bordered name="Save Folder" color="default"
+            onClick={() => { saveFolderOpen = !saveFolderOpen }}
+          >
+            {#if saveFolderOpen}
+              <FolderOpenIcon />
+            {:else}
+              <FolderIcon />
+            {/if}
+          </SidebarAvatar>
+        </div>
+      </div>
+      {#if saveFolderOpen}
+        <div class="p-1 flex flex-col items-center py-1 mt-1 rounded-lg relative">
+          <div class="absolute top-0 left-1 border border-selected w-full h-full rounded-lg z-0 bg-opacity-20 bg-darkbg"></div>
+            <div class="h-4 min-h-4 w-14 relative z-20"></div>
+          {#each saveFolderBots as bot}
+            <div class="group relative flex items-center px-2 z-10" role="listitem" draggable="false" ondragstart={(e) => e.preventDefault()}>
+              <SidebarIndicator isActive={$selectedCharID === 0 && $currentSaveFolderBot?.folderName === bot.folderName} />
+              <div role="button" tabindex="0" 
+                onclick={async () => { 
+                  try {
+                    const { character: loadedBot, sourceMap } = await parseBotJson(bot.folderName);
+                    const updatedBot = characterFormatUpdate(loadedBot)
+                    if (updatedBot && updatedBot.type !== 'group') {
+                    currentSaveFolderBot.set({
+                        character: updatedBot,
+                        folderName: bot.folderName,
+                        isDirty: false,
+                        sourceMap
+                    })}
+                    selectedCharID.set(0)
+                    reseter()
+                  } catch (error) {
+                    console.error('Failed to load save folder bot:', error);
+                  }
+                }}
+                onkeydown={(e) => { 
+                  if(e.key === 'Enter') {
+                    e.currentTarget.click();
+                  }
+                }}
+              >
+                <SidebarAvatar src="/none.webp" size="56" rounded={IconRounded} name={bot.characterName}/>
+              </div>
+            </div>
+            <div class="h-4 min-h-4 w-14 relative z-20"></div>
+          {/each}
+        </div>
+      {/if}
+    {/if}
   </div>
 </div>
 {/if}
@@ -714,7 +791,7 @@
     <!-- <button class="border-none bg-transparent p-0 text-textcolor"><X /></button> -->
   </button>
   {#if sideBarMode === 0}
-    {#if $selectedCharID < 0 || $settingsOpen}
+    {#if ($selectedCharID < 0) || $settingsOpen}
       <div>
         <h1 class="text-xl">Welcome to RisuAI!</h1>
         <span class="text-xs text-textcolor2">Select a bot to start chatting</span>
@@ -762,7 +839,13 @@
       {:else if $botMakerMode}
         <CharConfig />
       {:else}
-        <SideChatList bind:chara={ DBState.db.characters[$selectedCharID]} />
+        {#if $selectedCharID === -2}
+            {#if $currentSaveFolderBot}
+                <SideChatList bind:chara={$currentSaveFolderBot.character} />
+            {/if}
+        {:else}
+            <SideChatList bind:chara={ DBState.db.characters[$selectedCharID]} />
+        {/if}
       {/if}
     {/if}
   {/if}

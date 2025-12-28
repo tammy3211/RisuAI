@@ -5,6 +5,7 @@ import wasm from "vite-plugin-wasm";
 import { internalIpV4 } from 'internal-ip'
 import topLevelAwait from "vite-plugin-top-level-await";
 import strip from '@rollup/plugin-strip';
+import { createSaveApiHandler } from './server/saveApi';
 // https://vitejs.dev/config/
 export default defineConfig(({command, mode}) => {
   return {
@@ -24,7 +25,14 @@ export default defineConfig(({command, mode}) => {
       wasm(),
       command === 'build' ? strip({
         include: '**/*.(mjs|js|svelte|ts)'
-      }) : null
+      }) : null,
+      // Save API 미들웨어 플러그인
+      {
+        name: 'save-api',
+        configureServer(server) {
+          server.middlewares.use(createSaveApiHandler());
+        }
+      }
     ],
 
     // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

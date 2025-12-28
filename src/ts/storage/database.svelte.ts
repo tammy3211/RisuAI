@@ -12,6 +12,8 @@ import { defaultColorScheme, type ColorScheme } from '../gui/colorscheme';
 import type { PromptItem, PromptSettings } from '../process/prompt';
 import type { OobaChatCompletionRequestParams } from '../model/ooba';
 import { type HypaV3Settings, type HypaV3Preset, createHypaV3Preset } from '../process/memory/hypav3'
+import { createBlankChar } from '../characters';
+import { currentSaveFolderBot } from "../saveFolderSync";
 
 export let appVer = "166.3.3"
 export let webAppSubVer = ''
@@ -588,10 +590,63 @@ export function setDatabase(data:Database){
         data.promptInfoInsideChat = false
     }
     changeLanguage(data.language)
+
+    // 0번 인덱스 마이그레이션 (Save 폴더 봇용 가상 슬롯 확보)
+    if (data.characters && data.characters.length > 0) {
+        // 0번이 비어있지 않거나(실제 데이터), 가상 슬롯 마커가 없다면 밀어내기
+        // 여기서는 간단히 0번이 '가상 슬롯'인지 확인하는 방법이 없으므로
+        // 항상 0번은 비워두는 정책을 사용.
+        // 단, 매번 실행되면 계속 밀려나므로, 0번이 '빈 캐릭터'가 아니면 밀어내는 식으로 처리
+        const firstChar = data.characters[0];
+        // 이름이 있고 타입이 캐릭터면 실제 데이터로 간주 (빈 캐릭터는 name이 '')
+        if (firstChar && (firstChar.name !== '' || firstChar.type !== 'character')) {
+             console.log('[Database] Migrating index 0 to index 1 for Save Folder Bot slot');
+             data.characters.unshift(createBlankChar());
+        }
+    } else if (!data.characters || data.characters.length === 0) {
+        data.characters = [createBlankChar()];
+    }
+
     setDatabaseLite(data)
 }
 
 export function setDatabaseLite(data:Database){
+    if(data.characters){
+        data.characters = new Proxy(data.characters, {
+            get(target, prop, receiver) {
+                if (prop === 'toJSON') {
+                    return () => {
+                        // JSON.stringify 시 0번 인덱스를 빈 캐릭터로 만든 복사본 반환
+                        // 이렇게 하면 DB 파일에 Save 폴더 봇 데이터가 저장되지 않음
+                        const copy = [...target];
+                        if (copy.length > 0) {
+                            copy[0] = createBlankChar();
+                        }
+                        return copy;
+                    }
+                }
+                if (prop === '0') {
+                    const saveBot = get(currentSaveFolderBot);
+                    // SaveBot이 있으면 그것을, 없으면 원래 0번(빈 슬롯) 반환
+                    return saveBot ? saveBot.character : Reflect.get(target, prop, receiver);
+                }
+                return Reflect.get(target, prop, receiver);
+            },
+            set(target, prop, value, receiver) {
+                if (prop === '0') {
+                    const current = get(currentSaveFolderBot);
+                    if (current) {
+                        // Save 폴더 봇 모드일 때는 currentSaveFolderBot 업데이트만 하고
+                        // 실제 배열에는 저장하지 않음 (DB 저장 방지)
+                        currentSaveFolderBot.set({ ...current, character: value, isDirty: true });
+                        return true;
+                    }
+                    // Save 폴더 봇이 아닐 때만 실제 배열에 저장
+                }
+                return Reflect.set(target, prop, value, receiver);
+            }
+        });
+    }
     DBState.db = data
 }
 
@@ -607,11 +662,14 @@ export function getDatabase(options:getDatabaseOptions = {}):Database{
 }
 
 export function getCurrentCharacter(options:getDatabaseOptions = {}):character|groupChat{
+    const id = get(selectedCharID)
+    // 0번 인덱스는 Proxy가 처리하므로 별도 분기 불필요
+    // 하지만 명시적으로 -2 로직은 제거
     const db = getDatabase(options)
     if(!db.characters){
         db.characters = []
     }
-    const char = db.characters?.[get(selectedCharID)]
+    const char = db.characters?.[id]
     return char
 }
 
@@ -1183,6 +1241,7 @@ export interface character{
     firstMsgIndex:number
     loreSettings?:loreSettings
     loreExt?:any
+    botmaker?: string[]
     additionalData?: {
         tag?:string[]
         creator?:string
