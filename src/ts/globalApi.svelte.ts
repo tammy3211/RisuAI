@@ -135,6 +135,10 @@ async function checkCapFileExists(getUriOptions: CapFS.GetUriOptions): Promise<b
  * @returns {Promise<string>} - A promise that resolves to the source URL of the file.
  */
 export async function getFileSrc(loc: string) {
+    if (!loc) return '';
+    if (loc.startsWith('/api/save/')) return loc;
+    if (loc.startsWith('http') || loc.startsWith('blob:') || loc.startsWith('data:')) return loc;
+
     if (isTauri) {
         if (loc.startsWith('assets')) {
             if (appDataDirPath === '') {

@@ -743,7 +743,7 @@
                   }
                 }}
               >
-                <SidebarAvatar src="/none.webp" size="56" rounded={IconRounded} name={bot.characterName}/>
+                <SidebarAvatar src={bot.iconPath || "/none.webp"} size="56" rounded={IconRounded} name={bot.characterName}/>
               </div>
             </div>
             <div class="h-4 min-h-4 w-14 relative z-20"></div>
@@ -838,7 +838,7 @@
       {:else if $botMakerMode}
         <CharConfig />
       {:else}
-        {#if $selectedCharID === -2}
+        {#if $selectedCharID === 0}
             {#if $currentSaveFolderBot}
                 <SideChatList bind:chara={$currentSaveFolderBot.character} />
             {/if}

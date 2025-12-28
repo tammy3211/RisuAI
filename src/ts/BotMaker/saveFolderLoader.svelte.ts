@@ -31,7 +31,8 @@ async function loadBotsFromWeb(): Promise<SaveFolderBot[]> {
           const charData = await response.json()
           bots.push({
             folderName: folderName,
-            characterName: charData.name || folderName
+            characterName: charData.name || folderName,
+            iconPath: charData.image ? `/api/save/${folderName}/file/${charData.image}` : undefined
           })
         }
       } catch (e) {

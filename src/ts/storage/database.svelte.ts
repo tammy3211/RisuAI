@@ -692,8 +692,6 @@ export function getDatabase(options:getDatabaseOptions = {}):Database{
 
 export function getCurrentCharacter(options:getDatabaseOptions = {}):character|groupChat{
     const id = get(selectedCharID)
-    // 0번 인덱스는 Proxy가 처리하므로 별도 분기 불필요
-    // 하지만 명시적으로 -2 로직은 제거
     const db = getDatabase(options)
     if(!db.characters){
         db.characters = []

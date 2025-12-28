@@ -134,13 +134,30 @@ export function createSaveApiHandler(): Connect.NextHandleFunction {
           return;
         }
         
-        const content = await fs.readFile(fullPath, 'utf-8');
+        const content = await fs.readFile(fullPath);
         
         // Content-Type 설정
-        let contentType = 'text/plain';
-        if (fullPath.endsWith('.json')) contentType = 'application/json';
-        else if (fullPath.endsWith('.md')) contentType = 'text/markdown';
-        else if (fullPath.endsWith('.txt')) contentType = 'text/plain';
+        const ext = path.extname(fullPath).toLowerCase();
+        let contentType = 'application/octet-stream';
+        
+        const mimeTypes: Record<string, string> = {
+          '.json': 'application/json',
+          '.md': 'text/markdown',
+          '.txt': 'text/plain',
+          '.png': 'image/png',
+          '.jpg': 'image/jpeg',
+          '.jpeg': 'image/jpeg',
+          '.gif': 'image/gif',
+          '.webp': 'image/webp',
+          '.svg': 'image/svg+xml',
+          '.html': 'text/html',
+          '.css': 'text/css',
+          '.js': 'text/javascript'
+        };
+
+        if (mimeTypes[ext]) {
+          contentType = mimeTypes[ext];
+        }
         
         res.setHeader('Content-Type', contentType);
         res.end(content);
