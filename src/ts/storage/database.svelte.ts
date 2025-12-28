@@ -1182,6 +1182,7 @@ export interface Database{
     ImagenPersonGeneration:string,
     sourcemapTranslate:boolean
     settingsCloseButtonSize:number
+    enableBookmark?: boolean
 }
 
 interface SeparateParameters{
@@ -1723,6 +1724,8 @@ export interface Message{
     promptInfo?: MessagePresetInfo
     name?:string
     otherUser?:boolean
+    disabled?:false|true|'allBefore'
+    isComment?:boolean
 }
 
 export interface MessageGenerationInfo{
