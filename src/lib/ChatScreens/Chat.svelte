@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { ArrowLeft, ArrowLeftRightIcon, ArrowRight, BotIcon, CopyIcon, LanguagesIcon, PencilIcon, RefreshCcwIcon, TrashIcon, UserIcon, Volume2Icon } from "lucide-svelte"
+    import { ArrowLeft, ArrowLeftRightIcon, ArrowRight, BookmarkIcon, BotIcon, CopyIcon, LanguagesIcon, PencilIcon, RefreshCcwIcon, TrashIcon, UserIcon, Volume2Icon } from "@lucide/svelte"
     import { aiLawApplies, getFileSrc } from "src/ts/globalApi.svelte"
     import { ColorSchemeTypeStore } from "src/ts/gui/colorscheme"
     import { longpress } from "src/ts/gui/longtouch"
@@ -13,8 +13,9 @@
     import { capitalize, getUserIcon, getUserName } from "src/ts/util"
     import { onDestroy, onMount } from "svelte"
     import { type Unsubscriber } from "svelte/store"
+    import { v4 as uuidv4 } from 'uuid'
     import { language } from "../../lang"
-    import { alertClear, alertConfirm, alertNormal, alertRequestData, alertWait } from "../../ts/alert"
+    import { alertClear, alertConfirm, alertInput, alertNormal, alertRequestData, alertWait } from "../../ts/alert"
     import { ParseMarkdown, type CbsConditions, type simpleCharacterArgument } from "../../ts/parser.svelte"
     import { getCurrentCharacter, getCurrentChat, setCurrentChat, type MessageGenerationInfo } from "../../ts/storage/database.svelte"
     import { selectedCharID } from "../../ts/stores.svelte"
@@ -132,10 +133,7 @@
     }
 
 
-    let blankMessage = $state((message === '{{none}}' || message === '{{blank}}' || message === '') && idx === -1)
-    $effect.pre(() => {
-        blankMessage = (message === '{{none}}' || message === '{{blank}}' || message === '') && idx === -1
-    });
+    let blankMessage = $derived((message === '{{none}}' || message === '{{blank}}' || message === '') && idx === -1)
 
     $effect.pre(() => {
         displaya(message)
@@ -205,6 +203,66 @@
             }, 100) // Small delay to allow display mode to complete
         }
     }
+
+    let isBookmarked = $derived(
+        DBState.db.characters[selIdState.selId]
+            ?.chats[DBState.db.characters[selIdState.selId].chatPage]
+            ?.bookmarks?.includes(DBState.db.characters[selIdState.selId].chats[DBState.db.characters[selIdState.selId].chatPage].message[idx]?.chatId) ?? false
+    );
+
+    async function toggleBookmark() {
+        const chat = DBState.db.characters[selIdState.selId].chats[DBState.db.characters[selIdState.selId].chatPage];
+        
+        if(!chat.message[idx]) return;
+
+        let messageId = chat.message[idx]?.chatId;
+        const messageContent = chat.message[idx]?.data;
+
+        if (!messageId) {
+            messageId = uuidv4();
+            chat.message[idx].chatId = messageId;
+        }
+
+        chat.bookmarks ??= [];
+        chat.bookmarkNames ??= {};
+
+        const bookmarkIndex = chat.bookmarks.indexOf(messageId);
+
+        if (bookmarkIndex > -1) {
+            chat.bookmarks.splice(bookmarkIndex, 1);
+            delete chat.bookmarkNames[messageId];
+        } else {
+            chat.bookmarks.push(messageId);
+
+            const msgSender = chat.message[idx]?.role === 'user' ? getUserName() : name;
+            const newName= await alertInput(language.bookmarkAskNameOrDefault);
+
+            if (newName && newName.trim() !== '') {
+                chat.bookmarkNames[messageId] = newName;
+            } else {
+                let defaultName;
+
+                // 첫 번째 방법으로, 메시지를 줄 단위로 분리한 뒤에 앞에 특수 문자가 없는 줄을 찾는다
+                const blacklist = ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '-', '=', '[', ']', '{', '}', '|', ';', ':', '"', "'", ',', '.', '<', '>', '/', '?'];
+                let lines = messageContent.split('\n');
+                // 중반 내용을 사용함
+                lines = lines.splice(Math.floor(lines.length * 0.5));
+                for (const line of lines) {
+                    if (line && !blacklist.some(char => line.startsWith(char))) {
+                        defaultName = line.trim().slice(0, 50) + '...';
+                        break;
+                    }
+                }
+                if (!defaultName) {
+                    defaultName = messageContent.slice(0, 50) + '...';
+                }
+                chat.bookmarkNames[messageId] = msgSender + '| ' + defaultName;
+            }
+        }
+
+        // Svelte 5의 반응성을 위해 배열을 재할당합니다.
+        chat.bookmarks = [...chat.bookmarks];
+    }
 </script>
 
 
@@ -212,7 +270,7 @@
     <div class="flex flex-col items-end">
         {#if messageGenerationInfo && (DBState.db.requestInfoInsideChat || aiLawApplies())}
             <button class="text-sm p-1 text-textcolor2 border-darkborderc float-end mr-2 my-1
-                    hover:ring-darkbutton hover:ring rounded-md hover:text-textcolor transition-all flex justify-center items-center" 
+                    hover:ring-darkbutton hover:ring-3 rounded-md hover:text-textcolor transition-all flex justify-center items-center" 
                     onclick={() => {
                         const currentGenerationInfo = idx >= 0 ? 
                             DBState.db.characters[$selectedCharID].chats[DBState.db.characters[$selectedCharID].chatPage].message[idx].generationInfo :
@@ -232,7 +290,7 @@
         {/if}
         {#if DBState.db.translatorType === 'llm' && translated}
             <button class="text-sm p-1 text-textcolor2 border-darkborderc float-end mr-2 my-1
-                            hover:ring-darkbutton hover:ring rounded-md hover:text-textcolor transition-all flex justify-center items-center" 
+                            hover:ring-darkbutton hover:ring-3 rounded-md hover:text-textcolor transition-all flex justify-center items-center" 
                     onclick={() => {
                         retranslate = true
                     }}
@@ -292,7 +350,7 @@
 {/snippet}
 
 {#snippet icons(options:{applyTextColors?:boolean} = {})}
-    <div class="flex-grow flex items-center justify-end" class:text-textcolor2={options?.applyTextColors !== false}>
+    <div class="grow flex items-center justify-end" class:text-textcolor2={options?.applyTextColors !== false}>
         <span class="text-xs">{statusMessage}</span>
         {#if DBState.db.useChatCopy && !blankMessage}
             <button class="ml-2 hover:text-blue-500 transition-colors button-icon-copy" onclick={async ()=>{
@@ -336,7 +394,7 @@
                         
                         const imgs = doc.querySelectorAll('img')
                         for(const img of imgs){
-                            img.setAttribute('alt', 'from RisuAI')
+                            img.setAttribute('alt', 'from Risuai')
                             const url = img.getAttribute('src')
                             
                             img.setAttribute('style', `
@@ -493,7 +551,7 @@
             ${doc.body.innerHTML}
         </div>
         <div style="text-align: center; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid ${root.style.getPropertyValue('--risu-theme-darkborderc')};">
-            <span style="font-size: 0.75rem; color: ${root.style.getPropertyValue('--risu-theme-textcolor2')}; opacity: 0.7;">From RisuAI</span>
+            <span style="font-size: 0.75rem; color: ${root.style.getPropertyValue('--risu-theme-textcolor2')}; opacity: 0.7;">From Risuai</span>
         </div>
     </div>
 </div>`
@@ -529,7 +587,9 @@
                     <Volume2Icon size={20}/>
                 </button>
             {/if}
-
+            <button class="ml-2 hover:text-yellow-500 transition-colors button-icon-bookmark {isBookmarked ? 'text-yellow-400' : ''}" onclick={toggleBookmark}>
+                <BookmarkIcon size={20}/>
+            </button>
             {#if !$ConnectionOpenStore}
                 <button class={"ml-2 hover:text-blue-500 transition-colors button-icon-edit "+(editMode?'text-blue-400':'')} onclick={() => {
                     if(!editMode){
@@ -712,12 +772,6 @@
         <button class={dom.getAttribute('class') ?? ''} style={dom.getAttribute('style') ?? ''}>
             {@render renderChilds(dom)}
         </button>
-    {:else if dom.tagName === 'STYLE'}
-        <!-- <div>
-            <style>
-                {dom.innerHTML}
-            </style>
-        </div> -->
     {:else if dom.tagName === 'RISUTEXTBOX'}
         {@render textBox()}
     {:else if dom.tagName === 'RISUICON'}
@@ -754,7 +808,7 @@
      data-chat-id={DBState.db.characters?.[selIdState.selId]?.chats?.[DBState.db.characters?.[selIdState.selId]?.chatPage]?.message?.[idx]?.chatId ?? ''}
      style={isLastMemory ? `border-top:${DBState.db.memoryLimitThickness}px solid rgba(98, 114, 164, 0.7);` : ''}
      onclickcapture={handleButtonTriggerWithin}>
-    <div class="text-textcolor mt-1 ml-4 mr-4 mb-1 p-2 bg-transparent flex-grow border-t-gray-900 border-opacity-30 border-transparent flexium items-start max-w-full" >
+    <div class="text-textcolor mt-1 ml-4 mr-4 mb-1 p-2 bg-transparent grow border-t-gray-900 border-opacity/30 border-transparent flexium items-start max-w-full" >
         {#if DBState.db.theme === 'mobilechat' && !blankMessage}
             <div class={role === 'user' ? "flex items-start w-full justify-end" : "flex items-start"}>
                 {#if role !== 'user'}
@@ -785,7 +839,7 @@
             </div>
         {:else if DBState.db.theme === 'cardboard' && !blankMessage}
             <div class="w-full flex flex-col px-0 sm:px-4 py-4 relative">
-                <div class="bg-gradient-to-b from-gray-100 to-gray-200 rounded-lg shadow-lg border-gray-400 border p-4 flex flex-col">
+                <div class="bg-linear-to-b from-gray-100 to-gray-200 rounded-lg shadow-lg border-gray-400 border p-4 flex flex-col">
                     <div class="flex gap-4 mt-2 flex-col sm:flex-row">
                         <div class="flex flex-col items-center">
                             <div class="sm:h-96 sm:w-72 sm:min-w-72 w-48 h-64">
@@ -795,15 +849,15 @@
 
                         </div>
                         {#if editMode}
-                            <textarea class="flex-grow h-138 sm:h-96 overflow-y-auto bg-transparent text-black p-2 mb-2 resize-none message-edit-area" bind:value={message}></textarea>
+                            <textarea class="grow h-138 sm:h-96 overflow-y-auto bg-transparent text-black p-2 mb-2 resize-none message-edit-area" bind:value={message}></textarea>
                         {:else}
-                            <div class="flex-grow h-138 sm:h-96 overflow-y-auto p-2 mb-2 sm:mb-0">
+                            <div class="grow h-138 sm:h-96 overflow-y-auto p-2 mb-2 sm:mb-0">
                                 {@render textBox()}
                             </div>
                         {/if}
                     </div>
                 </div>
-                <div class="absolute bottom-0 right-0 bg-gradient-to-b from-gray-200 to-gray-300 p-2 rounded-md border border-gray-400 text-gray-400">
+                <div class="absolute bottom-0 right-0 bg-linear-to-b from-gray-200 to-gray-300 p-2 rounded-md border border-gray-400 text-gray-400">
                     {@render icons({applyTextColors: false})}
                 </div>
             </div>

@@ -1,11 +1,11 @@
-import { get, writable } from 'svelte/store';
+import { get } from 'svelte/store';
 import { checkNullish, decryptBuffer, encryptBuffer, selectSingleFile } from '../util';
 import { changeLanguage, language } from '../../lang';
 import type { RisuPlugin } from '../plugins/plugins';
 import type {triggerscript as triggerscriptMain} from '../process/triggers';
 import { downloadFile, saveAsset as saveImageGlobal } from '../globalApi.svelte';
 import { defaultAutoSuggestPrompt, defaultJailbreak, defaultMainPrompt } from './defaultPrompts';
-import { alertError, alertNormal, alertSelect } from '../alert';
+import { alertNormal } from '../alert';
 import type { NAISettings } from '../process/models/nai';
 import { prebuiltNAIpresets, prebuiltPresets } from '../process/templates/templates';
 import { defaultColorScheme, type ColorScheme } from '../gui/colorscheme';
@@ -15,7 +15,8 @@ import { type HypaV3Settings, type HypaV3Preset, createHypaV3Preset } from '../p
 import { createBlankChar } from '../characters';
 import { currentSaveFolderBot } from "../saveFolderSync";
 
-export let appVer = "166.3.3"
+//APP_VERSION_POINT is to locate the app version in the database file for version bumping
+export let appVer = "166.3.3" //<APP_VERSION_POINT>
 export let webAppSubVer = ''
 
 
@@ -24,7 +25,7 @@ export function setDatabase(data:Database){
         data.characters = []
     }
     if(checkNullish(data.apiType)){
-        data.apiType = 'gpt35_0301'
+        data.apiType = 'gemini-3-flash-preview'
     }
     if(checkNullish(data.openAIKey)){
         data.openAIKey = ''
@@ -54,7 +55,7 @@ export function setDatabase(data:Database){
         data.PresensePenalty = 70
     }
     if(checkNullish(data.aiModel)){
-        data.aiModel = 'gpt35_0301'
+        data.aiModel = 'gemini-3-flash-preview'
     }
     if(checkNullish(data.jailbreakToggle)){
         data.jailbreakToggle = false
@@ -138,7 +139,7 @@ export function setDatabase(data:Database){
         data.theme = ''
     }
     if(checkNullish(data.subModel)){
-        data.subModel = 'gpt35_0301'
+        data.subModel = 'gemini-3-flash-preview'
     }
     if(checkNullish(data.timeOut)){
         data.timeOut = 120
@@ -423,7 +424,7 @@ export function setDatabase(data:Database){
         //idk why type changes, but it does so this is a fix
         data.top_p = 1
     }
-    //@ts-ignore
+    //@ts-expect-error data.google has required fields (accessToken, projectId), but we use empty object as default and populate below
     data.google ??= {}
     data.google.accessToken ??= ''
     data.google.projectId ??= ''
@@ -459,7 +460,32 @@ export function setDatabase(data:Database){
     data.top_a ??= 0
     data.customTokenizer ??= 'tik'
     data.instructChatTemplate ??= "chatml"
-    data.openrouterProvider ??= ''
+    // Migration: convert old string type into new provider object
+    if (typeof data.openrouterProvider === 'string') {
+        const oldProvider = data.openrouterProvider as unknown as string;
+        data.openrouterProvider = {
+            order: oldProvider ? [oldProvider] : [],
+            only: [],
+            ignore: []
+        }
+    }
+    if (data.botPresets) {
+        for (const preset of data.botPresets) {
+            if (typeof preset.openrouterProvider === 'string') {
+                const oldProvider = preset.openrouterProvider as unknown as string;
+                preset.openrouterProvider = {
+                    order: oldProvider ? [oldProvider] : [],
+                    only: [],
+                    ignore: []
+                }
+            }
+        }
+    }
+    data.openrouterProvider ??= {
+        order: [],
+        only: [],
+        ignore: []
+    }
     data.useInstructPrompt ??= false
     data.hanuraiEnable ??= false
     data.hanuraiSplit ??= false
@@ -548,6 +574,7 @@ export function setDatabase(data:Database){
     data.hypaV3PresetId ??= 0
     data.showDeprecatedTriggerV2 ??= false
     data.returnCSSError ??= true
+    data.realmDirectOpen ??= false
     data.useExperimentalGoogleTranslator ??= false
     if(data.antiClaudeOverload){ //migration
         data.antiClaudeOverload = false
@@ -560,7 +587,7 @@ export function setDatabase(data:Database){
     }
     data.doNotChangeSeperateModels ??= false
     data.modelTools ??= []
-    data.hotkeys ??= structuredClone(defaultHotkeys)
+    data.hotkeys ??= safeStructuredClone(defaultHotkeys)
     data.fallbackModels ??= {
         memory: [],
         emotion: [],
@@ -580,11 +607,13 @@ export function setDatabase(data:Database){
     data.rememberToolUsage ??= true
     data.simplifiedToolUse ??= false
     data.streamGeminiThoughts ??= false
+    data.sourcemapTranslate ??= false
+    data.settingsCloseButtonSize ??= 24
     data.ImagenModel ??= 'imagen-4.0-generate-001'
     data.ImagenImageSize ??= '1K'
     data.ImagenAspectRatio ??= '1:1'
     data.ImagenPersonGeneration ??= 'allow_all'
-    //@ts-ignore
+    //@ts-expect-error __TAURI_INTERNALS__ is injected by Tauri runtime, not defined in Window interface
     if(!globalThis.__NODE__ && !window.__TAURI_INTERNALS__){
         //this is intended to forcely reduce the size of the database in web
         data.promptInfoInsideChat = false
@@ -972,7 +1001,11 @@ export interface Database{
     customTokenizer:string
     instructChatTemplate:string
     JinjaTemplate:string
-    openrouterProvider:string
+    openrouterProvider: {
+        order: string[]
+        only: string[]
+        ignore: string[]
+    }
     useInstructPrompt:boolean
     hanuraiTokens:number
     hanuraiSplit:boolean
@@ -1067,6 +1100,7 @@ export interface Database{
     hypaV3Settings: HypaV3Settings // legacy
     hypaV3Presets: HypaV3Preset[]
     hypaV3PresetId: number
+    realmDirectOpen:boolean
     OaiCompAPIKeys: {[key:string]:string}
     inlayErrorResponse:boolean
     reasoningEffort:number
@@ -1147,7 +1181,9 @@ export interface Database{
     ImagenModel:string
     ImagenImageSize:string
     ImagenAspectRatio:string
-    ImagenPersonGeneration:string
+    ImagenPersonGeneration:string,
+    sourcemapTranslate:boolean
+    settingsCloseButtonSize:number
 }
 
 interface SeparateParameters{
@@ -1463,7 +1499,11 @@ export interface botPreset{
     repetition_penalty?:number
     min_p?:number
     top_a?:number
-    openrouterProvider?:string
+    openrouterProvider?: {
+        order: string[]
+        only: string[]
+        ignore: string[]
+    }
     useInstructPrompt?:boolean
     customPromptTemplateToggle?:string
     templateDefaultVariables?:string
@@ -1511,7 +1551,7 @@ export interface botPreset{
         model: string[]
     }
     fallbackWhenBlankResponse?: boolean
-    verbosity:number
+    verbosity?:number
     dynamicOutput?:DynamicOutput
 }
 
@@ -1664,6 +1704,8 @@ export interface Chat{
     hypaV3Data?:SerializableHypaV3Data
     folderId?:string
     lastDate?:number
+    bookmarks?: string[];
+    bookmarkNames?: { [chatId: string]: string };
 }
 
 export interface ChatFolder{
@@ -1803,7 +1845,7 @@ export const defaultOoba:OobaSettings = {
 
 export const presetTemplate:botPreset = {
     name: "New Preset",
-    apiType: "gpt35_0301",
+    apiType: "gemini-3-flash-preview",
     openAIKey: "",
     mainPrompt: defaultMainPrompt,
     jailbreak: defaultJailbreak,
@@ -1814,8 +1856,8 @@ export const presetTemplate:botPreset = {
     frequencyPenalty: 70,
     PresensePenalty: 70,
     formatingOrder: ['main', 'description', 'personaPrompt','chats','lastChat', 'jailbreak', 'lorebook', 'globalNote', 'authorNote'],
-    aiModel: "gpt35_0301",
-    subModel: "gpt35_0301",
+    aiModel: "gemini-3-flash-preview",
+    subModel: "gemini-3-flash-preview",
     currentPluginProvider: "",
     textgenWebUIStreamURL: '',
     textgenWebUIBlockingURL: '',
@@ -2006,7 +2048,6 @@ export function setPreset(db:Database, newPres: botPreset){
         mode: 'instruct'
     }
     db.top_p = newPres.top_p ?? 1
-    //@ts-ignore //for legacy mistpings
     db.promptSettings = safeStructuredClone(newPres.promptSettings) ?? {
         assistantPrefill: '',
         postEndInnerFormat: '',
@@ -2075,7 +2116,7 @@ export function setPreset(db:Database, newPres: botPreset){
     return db
 }
 
-import { encode as encodeMsgpack, decode as decodeMsgpack } from "msgpackr";
+import { encode as encodeMsgpack, decode as decodeMsgpack } from "msgpackr/index-no-eval";
 import * as fflate from "fflate";
 import type { OnnxModelFiles } from '../process/transformers';
 import type { RisuModule } from '../process/modules';
@@ -2083,7 +2124,6 @@ import type { SerializableHypaV2Data } from '../process/memory/hypav2';
 import { decodeRPack, encodeRPack } from '../rpack/rpack_bg';
 import { DBState, selectedCharID } from '../stores.svelte';
 import { LLMFlags, LLMFormat, LLMTokenizer } from '../model/modellist';
-import type { Parameter } from '../process/request/request';
 import type { HypaModel } from '../process/memory/hypamemory';
 import type { SerializableHypaV3Data } from '../process/memory/hypav3';
 import { defaultHotkeys, type Hotkey } from '../defaulthotkeys';

@@ -4,7 +4,7 @@
     
     import { DBState } from 'src/ts/stores.svelte';
     import { ReloadGUIPointer, selectedCharID } from "../../ts/stores.svelte";
-    import { DownloadIcon, EditIcon, HardDriveUploadIcon, PlusIcon, TrashIcon, XIcon } from "lucide-svelte";
+    import { DownloadIcon, SquarePenIcon, HardDriveUploadIcon, PlusIcon, TrashIcon, XIcon } from "@lucide/svelte";
     import { exportChat, importChat } from "../../ts/characters";
     import { findCharacterbyId } from "../../ts/util";
     import TextInput from "../UI/GUI/TextInput.svelte";
@@ -14,11 +14,11 @@
     let { close = () => {} } = $props();
 </script>
 
-<div class="absolute w-full h-full z-40 bg-black bg-opacity-50 flex justify-center items-center">
+<div class="absolute w-full h-full z-40 bg-black bg-opacity/50 flex justify-center items-center">
     <div class="bg-darkbg p-4 break-any rounded-md flex flex-col max-w-3xl w-72 max-h-full overflow-y-auto">
         <div class="flex items-center text-textcolor mb-4">
             <h2 class="mt-0 mb-0">{language.chatList}</h2>
-            <div class="flex-grow flex justify-end">
+            <div class="grow flex justify-end">
                 <button class="text-textcolor2 hover:text-green-500 mr-2 cursor-pointer items-center" onclick={close}>
                     <XIcon size={24}/>
                 </button>
@@ -36,7 +36,7 @@
                 {:else}
                     <span>{chat.name}</span>
                 {/if}
-                <div class="flex-grow flex justify-end">
+                <div class="grow flex justify-end">
                     <div class="text-textcolor2 hover:text-green-500 mr-2 cursor-pointer" role="button" tabindex="0" onclick={async (e) => {
                         e.stopPropagation()
                         exportChat(i)
@@ -98,7 +98,7 @@
             <button class="text-textcolor2 hover:text-green-500 cursor-pointer" onclick={() => {
                 editMode = !editMode
             }}>
-                <EditIcon size={18}/>
+                <SquarePenIcon size={18}/>
             </button>
         </div>
     </div>

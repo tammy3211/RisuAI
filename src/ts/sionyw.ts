@@ -10,7 +10,7 @@ let tokenInitalized = false
 let tokenExpiry = 0 // Unix timestamp in milliseconds
 
 //isTauri is NOT IMPORTED due to circular dependency issues
-//@ts-expect-error
+//@ts-expect-error __TAURI_INTERNALS__ is injected by Tauri runtime, not defined in Window interface
 const isTauri = !!window.__TAURI_INTERNALS__
 
 interface SionywOauthData {
@@ -273,15 +273,27 @@ async function loginToSionywSPAVersion(){
     })
 
     
-    const dPoPKeyPair = await crypto.subtle.generateKey(
-        {
-            name: "ECDSA",
-            namedCurve: "P-256"
-        },
-        false,
-        ["sign", "verify"],
-    );
-
+    let dPoPKeyPair
+    
+    try {
+        dPoPKeyPair = await crypto.subtle.generateKey(
+            {
+                name: 'Ed25519',
+            },
+            false,
+            ["sign", "verify"],
+        );
+    } catch (error) {
+        console.warn("Ed25519 not supported, falling back to P-256 for DPoP keys")
+        dPoPKeyPair = await crypto.subtle.generateKey(
+            {
+                name: "ECDSA",
+                namedCurve: "P-256"
+            },
+            false,
+            ["sign", "verify"],
+        );
+    }
     const DPoP = client.getDPoPHandle(config, dPoPKeyPair)
 
     const registration = await a.json()
