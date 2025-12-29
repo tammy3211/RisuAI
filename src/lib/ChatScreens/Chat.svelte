@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { ArrowLeft, ArrowLeftRightIcon, ArrowRight, BookmarkIcon, BotIcon, CopyIcon, GitBranch, HamburgerIcon, LanguagesIcon, PencilIcon, RefreshCcwIcon, SplitIcon, TrashIcon, UserIcon, Volume2Icon } from "@lucide/svelte"
-    import { aiLawApplies, changeChatTo, getFileSrc } from "src/ts/globalApi.svelte"
+    import { ArrowLeft, ArrowLeftRightIcon, ArrowRight, BookmarkIcon, BotIcon, CopyIcon, PowerOff, GitBranch, HamburgerIcon, LanguagesIcon, MenuIcon, PencilIcon, RefreshCcwIcon, SplitIcon, TrashIcon, UserIcon, Volume2Icon, Scissors } from "@lucide/svelte"
+    import { aiLawApplies, changeChatTo, foldChatToMessage, getFileSrc } from "src/ts/globalApi.svelte"
     import { ColorSchemeTypeStore } from "src/ts/gui/colorscheme"
     import { longpress } from "src/ts/gui/longtouch"
     import { getModelInfo } from "src/ts/model/modellist"
@@ -8,9 +8,9 @@
     import { risuChatParser } from "src/ts/process/scripts"
     import { runTrigger } from 'src/ts/process/triggers'
     import { sayTTS } from "src/ts/process/tts"
-    import { DBState, ReloadChatPointer, CurrentTriggerIdStore } from 'src/ts/stores.svelte'
+    import { DBState, ReloadChatPointer, CurrentTriggerIdStore, popupStore } from 'src/ts/stores.svelte'
     import { ConnectionOpenStore } from "src/ts/sync/multiuser"
-    import { capitalize, getUserIcon, getUserName } from "src/ts/util"
+    import { capitalize, getUserIcon, getUserName, sleep } from "src/ts/util"
     import { onDestroy, onMount } from "svelte"
     import { type Unsubscriber } from "svelte/store"
     import { v4 as uuidv4, v4 } from 'uuid'
@@ -22,7 +22,7 @@
     import { HideIconStore, ReloadGUIPointer, selIdState } from "../../ts/stores.svelte"
     import AutoresizeArea from "../UI/GUI/TextAreaResizable.svelte"
     import ChatBody from './ChatBody.svelte'
-    import PopupList from "../UI/PopupList.svelte";
+    import PopupButton from "../UI/PopupButton.svelte";
 
     let translating = $state(false)
     let editMode = $state(false)
@@ -48,6 +48,7 @@
         currentPage?: number;
         totalPages?: number;
         isComment?: boolean;
+        disabled?: boolean | 'allBefore';
     }
 
     let {
@@ -69,6 +70,7 @@
         currentPage = 1,
         totalPages = 1,
         isComment = false,
+        disabled = false,
     }: Props = $props();
 
     let msgDisplay = $state('')
@@ -245,10 +247,8 @@
             } else {
                 let defaultName;
 
-                // 첫 번째 방법으로, 메시지를 줄 단위로 분리한 뒤에 앞에 특수 문자가 없는 줄을 찾는다
                 const blacklist = ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '-', '=', '[', ']', '{', '}', '|', ';', ':', '"', "'", ',', '.', '<', '>', '/', '?'];
                 let lines = messageContent.split('\n');
-                // 중반 내용을 사용함
                 lines = lines.splice(Math.floor(lines.length * 0.5));
                 for (const line of lines) {
                     if (line && !blacklist.some(char => line.startsWith(char))) {
@@ -263,7 +263,6 @@
             }
         }
 
-        // Svelte 5의 반응성을 위해 배열을 재할당합니다.
         chat.bookmarks = [...chat.bookmarks];
     }
 </script>
@@ -322,7 +321,9 @@
                 {#if type === 'branchedfrom'}
                     <button class="text-blue-500 hover:underline"
                         onclick={() => {
+                            console.log(parts)
                             changeChatTo(parts[2] ?? '')
+                            foldChatToMessage(parts[4])
                         }}
                     >
                         <GitBranch size={20} class="inline-block mr-1" />
@@ -390,14 +391,14 @@
             <div class="flex items-center ml-2 gap-2">
                 {#if window.innerWidth >= 640}
                     {@render majorIconButtonsBody(false)}
-                    <PopupList>
+                    <PopupButton>
                         {@render minorIconButtonsBody(true)}
-                    </PopupList>
+                    </PopupButton>
                 {:else}
-                    <PopupList>
+                    <PopupButton>
                         {@render majorIconButtonsBody(true)}
                         {@render minorIconButtonsBody(true)}
-                    </PopupList>
+                    </PopupButton>
                 {/if}
                 {@render rerolls()}
 
@@ -405,6 +406,7 @@
         {/if}
     </div>
 {/snippet}
+
 
 {#snippet majorIconButtonsBody(showNames:boolean)}
     {#if DBState.db.useChatCopy && !blankMessage}
@@ -709,7 +711,10 @@
 {#snippet minorIconButtonsBody(showNames:boolean)}
     
     {#if DBState.db.enableBookmark}
-        <button class="flex items-center hover:text-blue-500 transition-colors button-icon-bookmark {isBookmarked ? 'text-yellow-400' : ''}" onclick={toggleBookmark}>
+        <button class="flex items-center hover:text-blue-500 transition-colors button-icon-bookmark {isBookmarked ? 'text-yellow-400' : ''}" onclick={async () => {
+            await sleep(1)
+            toggleBookmark()
+        }}>
             <BookmarkIcon size={20}/>
             {#if showNames}
                 <span class="ml-1">{language.bookmark}</span>
@@ -717,12 +722,14 @@
         </button>
     {/if}
 
-    <button class="flex items-center hover:text-blue-500 transition-colors" onclick={() => {
+    <button class="flex items-center hover:text-blue-500 transition-colors" onclick={async () => {
+        await sleep(1)
         const currentChat = DBState.db.characters[selIdState.selId].chats[DBState.db.characters[selIdState.selId].chatPage]
         const currentMessage = currentChat.message[idx]
         const newChat = $state.snapshot(currentChat)
         newChat.name = `Copy of ${newChat.name}`
         newChat.id = v4()
+        newChat.message = newChat.message.slice(0, idx + 1)
         newChat.message.push({
             role: 'char',
             data: '{{specialcomment::branchedfrom::' + currentChat.id + '::' + currentChat.name + '::' + currentMessage.chatId + '::}}',
@@ -737,6 +744,28 @@
         <SplitIcon size={20}/>
         {#if showNames}
             <span class="ml-1">{language.branch}</span>
+        {/if}
+    </button>
+
+    <button class="flex items-center hover:text-blue-500 transition-colors" onclick={async () => {
+        await sleep(1)
+        const currentMessage = DBState.db.characters[selIdState.selId].chats[DBState.db.characters[selIdState.selId].chatPage].message[idx]
+        DBState.db.characters[selIdState.selId].chats[DBState.db.characters[selIdState.selId].chatPage].message[idx].disabled = !currentMessage.disabled
+    }}>
+        <PowerOff size={20}/>
+        {#if showNames}
+            <span class="ml-1">{language.disableMessage}</span>
+        {/if}
+    </button>
+
+    <button class="flex items-center hover:text-blue-500 transition-colors" onclick={async () => {
+        await sleep(1)
+        const currentMessage = DBState.db.characters[selIdState.selId].chats[DBState.db.characters[selIdState.selId].chatPage].message[idx]
+        DBState.db.characters[selIdState.selId].chats[DBState.db.characters[selIdState.selId].chatPage].message[idx].disabled = currentMessage.disabled === 'allBefore' ? false : 'allBefore'
+    }}>
+        <Scissors size={20}/>
+        {#if showNames}
+            <span class="ml-1">{language.disableAbove}</span>
         {/if}
     </button>
 {/snippet}
@@ -909,6 +938,10 @@
     {/each}
 {/snippet}
 
+
+{#if disabled === true}
+<div class="w-full border-t-2 border-dashed border-blue-500"></div>
+{/if}
 <div class="flex max-w-full justify-center risu-chat"
      data-chat-index={idx}
      data-chat-id={DBState.db.characters?.[selIdState.selId]?.chats?.[DBState.db.characters?.[selIdState.selId]?.chatPage]?.message?.[idx]?.chatId ?? ''}
@@ -981,7 +1014,9 @@
                             }}><ArrowLeftRightIcon size="18" /></button>
                         </span>
                     {:else if !blankMessage && !$HideIconStore}
-                        <span class="chat-width text-xl unmargin text-textcolor">{name}</span>
+                        <div class="chat-width text-xl unmargin text-textcolor flex items-center">
+                            <span>{name}</span>
+                        </div>
                     {/if}
                     {@render iconButtons()}
                 </div>
@@ -991,3 +1026,11 @@
         {/if}
     </div>
 </div>
+
+{#if disabled}
+<div class={{
+    "w-full border-t-2 border-dashed": true,
+    "border-blue-500": disabled === true,
+    "border-amber-500": disabled === 'allBefore',
+}}></div>
+{/if}
