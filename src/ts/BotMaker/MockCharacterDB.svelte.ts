@@ -1,5 +1,6 @@
 import type { customscript, loreBook, loreSettings, triggerscript } from "src/ts/storage/database.svelte"
 import { v4 as uuid } from 'uuid';
+import { defaults, defaultsDeep } from 'lodash';
 
 export interface MockLoreBook {
   type: 'risu',
@@ -223,8 +224,10 @@ function ensureSyncFields(target: any): boolean {
  * chatData 필드 보완
  */
 function ensureChatData(target: any): boolean {
-  if (!target.chatData) {
-    target.chatData = structuredClone(DEFAULT_CHAT_DATA);
+  if (!target.chats || !target.chatFolders || target.chatPage === undefined) {
+    target.chats = structuredClone(DEFAULT_CHAT_DATA.chats);
+    target.chatFolders = structuredClone(DEFAULT_CHAT_DATA.chatFolders);
+    target.chatPage = structuredClone(DEFAULT_CHAT_DATA.chatPage);
     return true;
   }
   return false;
@@ -241,35 +244,31 @@ export function mergeSyncToCharacter(botJson: any, parsedJson: any): void {
     return;
   }
 
-  // Character 필수 필드 병합
-  botJson.chaId = parsedJson.chaId || botJson.chaId || '';
-  botJson.type = parsedJson.type || DEFAULT_SYNC_FIELDS.type;
-  botJson.tags = parsedJson.tags || DEFAULT_SYNC_FIELDS.tags;
-  botJson.notes = parsedJson.notes || DEFAULT_SYNC_FIELDS.notes;
-  botJson.replaceGlobalNote = parsedJson.replaceGlobalNote || DEFAULT_SYNC_FIELDS.replaceGlobalNote;
-  botJson.firstMsgIndex = parsedJson.firstMsgIndex ?? DEFAULT_SYNC_FIELDS.firstMsgIndex;
-  botJson.creator = parsedJson.creator || DEFAULT_SYNC_FIELDS.creator;
-  botJson.characterVersion = parsedJson.characterVersion || DEFAULT_SYNC_FIELDS.characterVersion;
+  // lodash defaults를 사용해서 기본값 병합 (parsedJson 우선, 없으면 DEFAULT_SYNC_FIELDS 사용)
+  defaults(botJson, parsedJson, DEFAULT_SYNC_FIELDS);
 
+  // chaId는 특별 처리 (botJson에 있으면 유지)
+  if (!parsedJson.chaId || parsedJson.chaId === "") {
+    parsedJson.chaId = uuid();
+  }
+  botJson.chaId = parsedJson.chaId;
   // Chat 데이터 병합
-  if (parsedJson.chatData) {
-    // chats 배열의 각 항목에 누락된 필드 보완
-    const chats = parsedJson.chatData.chats || [structuredClone(DEFAULT_CHAT)];
-    botJson.chats = chats.map((chat: any) => ({
-      message: chat.message || [],
-      note: chat.note || '',
-      name: chat.name || 'Chat 1',
-      localLore: chat.localLore || [],
-      id: chat.id || uuid(), // 빈 문자열이면 uuid 생성
-      fmIndex: chat.fmIndex ?? -1
-    }));
-    botJson.chatFolders = parsedJson.chatData.chatFolders || [];
-    botJson.chatPage = parsedJson.chatData.chatPage ?? 0;
+  if (parsedJson.chats) {
+    const chats = (parsedJson.chats || [structuredClone(DEFAULT_CHAT)]).map((chat: any) =>
+      defaults(
+        { id: chat.id || uuid() }, // id가 없으면 uuid 생성
+        chat,
+        DEFAULT_CHAT
+      )
+    );
+
+    Object.assign(botJson, {
+      chats,
+      chatFolders: parsedJson.chatFolders || [],
+      chatPage: parsedJson.chatPage ?? 0
+    });
   } else {
-    const defaultData = structuredClone(DEFAULT_CHAT_DATA);
-    botJson.chats = defaultData.chats;
-    botJson.chatFolders = defaultData.chatFolders;
-    botJson.chatPage = defaultData.chatPage;
+    Object.assign(botJson, structuredClone(DEFAULT_CHAT_DATA));
   }
 }
 
@@ -360,17 +359,15 @@ export function DEFAULT_SYNC_DATA() {
     firstMsgIndex: -1,
     creator: '',
     characterVersion: '',
-    chatData: {
-      chats: [{
-        message: [],
-        note: '',
-        name: 'Chat 1',
-        localLore: [],
-        id: '',
-        fmIndex: -1
-      }],
-      chatFolders: [],
-      chatPage: 0
-    }
+    chats: [{
+      message: [],
+      note: '',
+      name: 'Chat 1',
+      localLore: [],
+      id: uuid(),
+      fmIndex: -1
+    }],
+    chatFolders: [],
+    chatPage: 0
   };
 }

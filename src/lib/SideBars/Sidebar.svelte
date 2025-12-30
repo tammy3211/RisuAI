@@ -724,13 +724,8 @@
                   try {
                     console.log('[Save Folder] Loading bot:', bot.folderName);
                     const { character: loadedBot, sourceMap } = await parseBotJson(bot.folderName);
-                    console.log('[Save Folder] Loaded bot data:', loadedBot);
-                    console.log('[Save Folder] Has chats:', !!loadedBot.chats);
-                    console.log('[Save Folder] Has creator:', loadedBot.creator);
                     
                     const updatedBot = characterFormatUpdate(loadedBot)
-                    console.log('[Save Folder] After characterFormatUpdate:', updatedBot);
-                    console.log('[Save Folder] Updated bot creator:', updatedBot?.creator);
                     
                     if (updatedBot && updatedBot.type !== 'group') {
                     currentSaveFolderBot.set({
@@ -743,9 +738,6 @@
                     DBState.db.characters[0] = updatedBot
                     console.log('[Save Folder] Successfully loaded into slot 0');
                     console.log('[Save Folder] DBState.db.characters[0]:', DBState.db.characters[0]);
-                    console.log('[Save Folder] additionalData:', DBState.db.characters[0]?.additionalData);
-                    console.log('[Save Folder] creator (top-level):', DBState.db.characters[0]?.creator !== null ? "true" : "false");
-                    console.log('[Save Folder] creator (additionalData):', DBState.db.characters[0]?.additionalData?.creator !== null ? "true" : "false");
                     }
                     selectedCharID.set(0)
                     reseter()
@@ -856,7 +848,7 @@
       {:else}
         {#if $selectedCharID === 0}
             {#if $currentSaveFolderBot}
-                <SideChatList bind:chara={$currentSaveFolderBot.character} />
+                <SideChatList bind:chara={DBState.db.characters[0]} />
             {/if}
         {:else}
             <SideChatList bind:chara={ DBState.db.characters[$selectedCharID]} />

@@ -197,15 +197,6 @@ export class RisuSaveEncoder {
                 savedId.add(character.chaId);
             }
         }
-        if(toSave.character.length > 0){
-            console.log(`Deleting character data: ${toSave.character.join(', ')}`);
-            //probably deleted characters
-            for(const chaId of toSave.character){
-                if(!savedId.has(chaId)){
-                    delete this.blocks[chaId];
-                }
-            }
-        }
 
         if(toSave.botPreset){
             this.blocks['preset'] = await this.encodeBlock({

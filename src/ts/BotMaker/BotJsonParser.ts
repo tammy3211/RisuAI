@@ -4,6 +4,7 @@ import { type MockCharacterDB, createMockCharacter, CreatesyncJson, V2_TRIGGER_H
 import { parseDocument } from 'yaml';
 import { v4 as uuid } from 'uuid';
 import { loadSyncJson, loadSettingsYaml, saveToFile, saveCharacterJson, saveCharacterData } from './SaveFolderFileManager';
+import { cloneDeep, omit, defaults } from 'lodash';
 
 export type SourceMap = Record<string, string>;
 
@@ -283,9 +284,9 @@ export async function parseBotJson(folderName: string): Promise<{ character: cha
       botJson.triggerscript = jsonData.triggerscript;
     }
 
-    // 나머지 필드 병합
-    const { globalLore, customscript, triggerscript, ...rest } = jsonData as any;
-    Object.assign(botJson, rest);
+    // 나머지 필드 병합 (globalLore, customscript, triggerscript 제외)
+    // jsonData의 값으로 botJson을 덮어씀 (defaults는 기존값 유지이므로 assign 사용)
+    Object.assign(botJson, omit(jsonData, ['globalLore', 'customscript', 'triggerscript']));
 
     // sync.json에서 character 필수 필드 로드 및 병합
     const parsedJson = await loadSyncJson(folderName);
@@ -298,34 +299,11 @@ export async function parseBotJson(folderName: string): Promise<{ character: cha
       return `/api/save/${folderName}/file/${path}`;
     };
 
-    // 1. Main Image
-    if (botJson.image) {
-      botJson.image = convertAssetUrl(botJson.image);
-    }
-
-    // 2. Emotion Images
-    if (botJson.emotionImages) {
-      botJson.emotionImages = botJson.emotionImages.map(item => {
-        if (item[1]) item[1] = convertAssetUrl(item[1]);
-        return item;
-      });
-    }
-
-    // 3. Additional Assets
-    if (botJson.additionalAssets) {
-      botJson.additionalAssets = botJson.additionalAssets.map(item => {
-        if (item[1]) item[1] = convertAssetUrl(item[1]);
-        return item;
-      });
-    }
-
-    // 4. CC Assets
-    if (botJson.ccAssets) {
-      botJson.ccAssets = botJson.ccAssets.map(item => {
-        if (item.uri) item.uri = convertAssetUrl(item.uri);
-        return item;
-      });
-    }
+    // Asset URL 변환 (한 번에 처리)
+    if (botJson.image) botJson.image = convertAssetUrl(botJson.image);
+    if (botJson.emotionImages) botJson.emotionImages = botJson.emotionImages.map(([name, path]) => [name, convertAssetUrl(path)]);
+    if (botJson.additionalAssets) botJson.additionalAssets = botJson.additionalAssets.map(([name, path, ext]) => [name, convertAssetUrl(path), ext]);
+    if (botJson.ccAssets) botJson.ccAssets = botJson.ccAssets.map(item => ({ ...item, uri: convertAssetUrl(item.uri) }));
 
     // 파일 유효성 검사 및 수정
     await validateFileContent(folderName, jsonData, sourceMap);
@@ -369,44 +347,29 @@ export function detectTriggerVersion(triggerscript: triggerscript[]): string {
 
 export function normalizeTriggerScript(triggerscript: triggerscript[], triggerVersion: string): { modified: boolean; triggerscript: triggerscript[]; } {
   let modified = false;
-  const result = [...triggerscript];
+  const result = cloneDeep(triggerscript);
+  const firstEffect = result[0]?.effect?.[0];
+  const firstEffectType = firstEffect?.type;
 
   if (triggerVersion === "v1") {
     // v1: 헤더가 있으면 제거
-    if (result.length > 0) {
-      const firstEffect = result[0]?.effect?.[0];
-      if (firstEffect && (firstEffect.type === 'v2Header' || firstEffect.type === 'triggerlua')) {
-        result.shift();
-        modified = true;
-      }
+    if (firstEffectType === 'v2Header' || firstEffectType === 'triggerlua') {
+      result.shift();
+      modified = true;
     }
   } else if (triggerVersion === "v2") {
     // v2: v2Header가 없으면 추가
-    if (result.length === 0) {
+    if (!firstEffect || firstEffectType !== 'v2Header') {
       // @ts-ignore
-      result.push(V2_TRIGGER_HEADER);
+      result.unshift(V2_TRIGGER_HEADER);
       modified = true;
-    } else {
-      const firstEffect = result[0]?.effect?.[0];
-      if (!firstEffect || firstEffect.type !== 'v2Header') {
-        // @ts-ignore
-        result.unshift(V2_TRIGGER_HEADER);
-        modified = true;
-      }
     }
   } else if (triggerVersion === "lua") {
     // lua: triggerlua 헤더가 없으면 추가
-    if (result.length === 0) {
+    if (!firstEffect || firstEffectType !== 'triggerlua') {
       // @ts-ignore
-      result.push(LUA_TRIGGER_HEADER);
+      result.unshift(LUA_TRIGGER_HEADER);
       modified = true;
-    } else {
-      const firstEffect = result[0]?.effect?.[0];
-      if (!firstEffect || firstEffect.type !== 'triggerlua') {
-        // @ts-ignore
-        result.unshift(LUA_TRIGGER_HEADER);
-        modified = true;
-      }
     }
   }
 

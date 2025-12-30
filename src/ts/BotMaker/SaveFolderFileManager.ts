@@ -184,21 +184,10 @@ export async function saveToSyncJson(folderName: string, path: string, value: an
   // 기존 sync.json 로드 (없으면 빈 객체)
   let syncData = await readJson(folderName, '.metadata/sync.json') || {};
 
-  // chats, chatPage, chatFolders는 chatData 안으로 매핑
-  // "chats[0].note" -> "chatData.chats[0].note"
-  // "chatPage" -> "chatData.chatPage"
   let mappedPath = path;
-  if (path.startsWith('chats')) {
-    mappedPath = 'chatData.' + path;
-  } else if (path === 'chatPage') {
-    mappedPath = 'chatData.chatPage';
-  } else if (path.startsWith('chatFolders')) {
-    mappedPath = 'chatData.' + path;
-  }
 
   console.log(`[saveToSyncJson] mappedPath: ${mappedPath}`);
 
-  // 경로 파싱: "chatData.chats[0].note" 형식 처리
   // 1. 점(.)으로 분리
   // 2. 배열 인덱스 [0] 처리
   const pathSegments: (string | number)[] = [];
@@ -231,11 +220,12 @@ export async function saveToSyncJson(folderName: string, path: string, value: an
       current[key] = typeof nextKey === 'number' ? [] : {};
     }
     
-    // 배열인 경우, 인덱스 위치에 객체가 없으면 빈 객체 생성
-    if (Array.isArray(current[key]) && typeof nextKey === 'number') {
-      if (!current[key][nextKey]) {
-        current[key][nextKey] = {};
-      }
+    // 배열인 경우, 인덱스가 범위를 벗어나면 배열 확장 (null로 채우지 않음)
+    if (Array.isArray(current[key]) && typeof key === 'number') {
+      // 배열 요소는 미리 생성하지 않음 (값이 설정될 때만 생성)
+    } else if (Array.isArray(current[key]) && typeof nextKey === 'number') {
+      // 다음이 배열 인덱스인 경우, 현재 위치로 이동만 함
+      // 실제 값은 마지막 단계에서 설정됨
     }
     
     current = current[key];
@@ -252,7 +242,7 @@ export async function saveToSyncJson(folderName: string, path: string, value: an
     current[lastKey] = value;
   }
 
-  console.log(`[saveToSyncJson] Final syncData:`, JSON.stringify(syncData, null, 2));
+  // console.log(`[saveToSyncJson] Final syncData:`, JSON.stringify(syncData, null, 2));
 
   // 저장
   await writeJson(folderName, '.metadata/sync.json', syncData);
@@ -273,3 +263,19 @@ export async function loadSyncJson(folderName: string): Promise<any | null> {
 export async function loadSettingsYaml(folderName: string): Promise<string | null> {
   return await readFile(folderName, '.metadata/settings.yaml');
 }
+
+/**
+ * lorebook 쓰기
+ */
+export async function writeLorebook() {
+  // 입력값, 소스 맵, 폴더 이름을 받아서 lorebook 파일을 작성하는 로직 구현
+
+}
+
+/**
+ * customscripts 쓰기
+ */
+
+/**
+ * 에셋 저장/삭제
+ */
