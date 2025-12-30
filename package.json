@@ -90,7 +90,8 @@
     "uuid": "^9.0.1",
     "wasmoon": "^1.16.0",
     "wavefile": "^11.0.0",
-    "web-streams-polyfill": "^3.3.3"
+    "web-streams-polyfill": "^3.3.3",
+    "yaml": "^2.8.2"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",

@@ -169,6 +169,11 @@ export class RisuSaveEncoder {
         for(const character of data.characters) {
             // 0번 인덱스(Save 폴더 봇)는 저장하지 않음
             if (data.characters.indexOf(character) === 0) {
+                // toSave.character에서 제거 (삭제로 인식되지 않도록)
+                const index = toSave.character.indexOf(character.chaId);
+                if (index !== -1) {
+                    toSave.character.splice(index, 1);
+                }
                 continue;
             }
             const index = toSave.character.indexOf(character.chaId);

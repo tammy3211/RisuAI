@@ -722,15 +722,31 @@
               <div role="button" tabindex="0" 
                 onclick={async () => { 
                   try {
+                    console.log('[Save Folder] Loading bot:', bot.folderName);
                     const { character: loadedBot, sourceMap } = await parseBotJson(bot.folderName);
+                    console.log('[Save Folder] Loaded bot data:', loadedBot);
+                    console.log('[Save Folder] Has chats:', !!loadedBot.chats);
+                    console.log('[Save Folder] Has creator:', loadedBot.creator);
+                    
                     const updatedBot = characterFormatUpdate(loadedBot)
+                    console.log('[Save Folder] After characterFormatUpdate:', updatedBot);
+                    console.log('[Save Folder] Updated bot creator:', updatedBot?.creator);
+                    
                     if (updatedBot && updatedBot.type !== 'group') {
                     currentSaveFolderBot.set({
                         character: updatedBot,
                         folderName: bot.folderName,
                         isDirty: false,
                         sourceMap
-                    })}
+                    })
+                    // 실제 배열에도 저장 (Svelte 반응성을 위해 필수)
+                    DBState.db.characters[0] = updatedBot
+                    console.log('[Save Folder] Successfully loaded into slot 0');
+                    console.log('[Save Folder] DBState.db.characters[0]:', DBState.db.characters[0]);
+                    console.log('[Save Folder] additionalData:', DBState.db.characters[0]?.additionalData);
+                    console.log('[Save Folder] creator (top-level):', DBState.db.characters[0]?.creator !== null ? "true" : "false");
+                    console.log('[Save Folder] creator (additionalData):', DBState.db.characters[0]?.additionalData?.creator !== null ? "true" : "false");
+                    }
                     selectedCharID.set(0)
                     reseter()
                   } catch (error) {

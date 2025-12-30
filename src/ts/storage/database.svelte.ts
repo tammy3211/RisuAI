@@ -655,9 +655,9 @@ export function setDatabaseLite(data:Database){
                     }
                 }
                 if (prop === '0') {
-                    const saveBot = get(currentSaveFolderBot);
-                    // SaveBot이 있으면 그것을, 없으면 원래 0번(빈 슬롯) 반환
-                    return saveBot ? saveBot.character : Reflect.get(target, prop, receiver);
+                    // 항상 실제 배열 값 반환 (Svelte 반응성 추적)
+                    // currentSaveFolderBot 로드 시 실제 배열에도 저장되므로 동기화됨
+                    return Reflect.get(target, prop, receiver);
                 }
                 return Reflect.get(target, prop, receiver);
             },
@@ -665,10 +665,11 @@ export function setDatabaseLite(data:Database){
                 if (prop === '0') {
                     const current = get(currentSaveFolderBot);
                     if (current) {
-                        // Save 폴더 봇 모드일 때는 currentSaveFolderBot 업데이트만 하고
-                        // 실제 배열에는 저장하지 않음 (DB 저장 방지)
+                        // currentSaveFolderBot 업데이트
                         currentSaveFolderBot.set({ ...current, character: value, isDirty: true });
-                        return true;
+                        // Svelte 반응성을 위해 실제 배열에도 저장
+                        // (toJSON trap이 DB 저장 시 빈 캐릭터로 치환함)
+                        return Reflect.set(target, prop, value, receiver);
                     }
                     // Save 폴더 봇이 아닐 때만 실제 배열에 저장
                 }

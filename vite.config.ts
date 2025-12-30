@@ -38,7 +38,11 @@ export default defineConfig(({command, mode}) => {
       host: '0.0.0.0', // listen on all addresses
       port: 5174,
       strictPort: true,
-      // hmr: false,
+      
+      watch: {
+        // During `tauri dev`, we need to watch the `src-tauri` directory to trigger a restart
+        ignored: ['save/**']
+      }
     },
     // to make use of `TAURI_ENV_DEBUG` and other env variables
     // https://v2.tauri.app/reference/environment-variables/

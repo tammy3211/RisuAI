@@ -1,4 +1,5 @@
 import type { customscript, loreBook, loreSettings, triggerscript } from "src/ts/storage/database.svelte"
+import { v4 as uuid } from 'uuid';
 
 export interface MockLoreBook {
   type: 'risu',
@@ -21,13 +22,12 @@ export interface MockCharacterDB {
   creatorNotes: string
   systemPrompt: string
   replaceGlobalNote: string
+  postHistoryInstructions: string
   alternateGreetings: string[]
   tags: string[]
   nickname?: string
   source?: string[]
   creation_date: number,
-  creator: string
-  characterVersion: string
 
   // extenstions
   bias: [string, number][]
@@ -75,4 +75,302 @@ export interface MockCharacterDB {
 
   // Extra
   extentions?: { [key: string]: any }
+  additionalData: {
+    tag?: string[]
+    creator: string
+    character_version: string
+  }
+}
+
+const CHARACTER_KEYS = [
+  'name',
+  'firstMessage',
+  'desc',
+  'personality',
+  'scenario',
+  'exampleMessage',
+  'creatorNotes',
+  'systemPrompt',
+  'replaceGlobalNote',
+  'alternateGreetings',
+  'postHistoryInstructions',
+  'tags',
+  'nickname',
+  'source',
+  'creation_date',
+
+  // extenstions
+  'bias',
+  'viewScreen',
+  'utilityBot',
+  'sdData',
+  'backgroundHTML',
+  'additionalText',
+  'largePortrait',
+  'inlayViewScreen',
+  'newGenData',
+  'lowLevelAccess',
+  'defaultVariables',
+  'prebuiltAssetCommand',
+  'prebuiltAssetExclude',
+  'prebuiltAssetStyle',
+  'depth_prompt',
+  'group_only_greetings',
+
+  // Modules
+  'customscript',
+  'triggerscript',
+
+  // LoreBook
+  'globalLore',
+  'loreSettings',
+  'lorePlus',
+  'loreExt',
+
+  // Assets
+  'image',
+  'emotionImages',
+  'additionalAssets',
+  'ccAssets',
+
+  // Extra
+  'extentions',
+  'additionalData'
+]
+
+export function createMockCharacter(): MockCharacterDB {
+  return {
+    name: "",
+    firstMessage: "",
+    desc: "",
+    personality: "",
+    scenario: "",
+
+    creatorNotes: "",
+    systemPrompt: "",
+    replaceGlobalNote: "",
+    postHistoryInstructions: "",
+    alternateGreetings: [],
+    tags: [],
+
+    creation_date: 0,
+
+    // extenstions
+    bias: [],
+    viewScreen: 'none',
+    utilityBot: false,
+    sdData: [],
+
+    lowLevelAccess: false,
+    additionalText: "",
+
+    // Modules
+    customscript: [],
+    triggerscript: [],
+
+    // LoreBook
+    globalLore: [],
+    emotionImages: [],
+    additionalData: {
+      creator: "",
+      character_version: "",
+      tag: []
+    }
+  }
+}
+
+export function CreatesyncJson(): any {
+  return DEFAULT_SYNC_DATA();
+}
+
+// sync.json의 기본값
+export const DEFAULT_SYNC_FIELDS = {
+  type: 'character',
+  tags: [],
+  notes: '',
+  replaceGlobalNote: '',
+  firstMsgIndex: -1,
+  creator: '',
+  characterVersion: ''
+};
+
+/**
+ * 객체에 sync 필드가 없으면 기본값으로 보완
+ * @param target - 보완할 대상 객체
+ * @returns 필드가 추가/수정되었는지 여부
+ */
+function ensureSyncFields(target: any): boolean {
+  let modified = false;
+
+  // chaId 검사 및 생성 (sync.json 전용)
+  if (target.chaId !== undefined && (!target.chaId || target.chaId === "")) {
+    target.chaId = uuid();
+    modified = true;
+  }
+
+  // 필수 필드 보완
+  for (const [key, defaultValue] of Object.entries(DEFAULT_SYNC_FIELDS)) {
+    if (target[key] === undefined) {
+      target[key] = Array.isArray(defaultValue) ? [...defaultValue] : defaultValue;
+      modified = true;
+    }
+  }
+
+  return modified;
+}
+
+/**
+ * chatData 필드 보완
+ */
+function ensureChatData(target: any): boolean {
+  if (!target.chatData) {
+    target.chatData = structuredClone(DEFAULT_CHAT_DATA);
+    return true;
+  }
+  return false;
+}
+
+/**
+ * sync.json 데이터를 character 객체에 병합
+ */
+export function mergeSyncToCharacter(botJson: any, parsedJson: any): void {
+  if (!parsedJson) {
+    // sync.json 로드 실패 시 기본값 설정
+    ensureSyncFields(botJson);
+    ensureChatData(botJson);
+    return;
+  }
+
+  // Character 필수 필드 병합
+  botJson.chaId = parsedJson.chaId || botJson.chaId || '';
+  botJson.type = parsedJson.type || DEFAULT_SYNC_FIELDS.type;
+  botJson.tags = parsedJson.tags || DEFAULT_SYNC_FIELDS.tags;
+  botJson.notes = parsedJson.notes || DEFAULT_SYNC_FIELDS.notes;
+  botJson.replaceGlobalNote = parsedJson.replaceGlobalNote || DEFAULT_SYNC_FIELDS.replaceGlobalNote;
+  botJson.firstMsgIndex = parsedJson.firstMsgIndex ?? DEFAULT_SYNC_FIELDS.firstMsgIndex;
+  botJson.creator = parsedJson.creator || DEFAULT_SYNC_FIELDS.creator;
+  botJson.characterVersion = parsedJson.characterVersion || DEFAULT_SYNC_FIELDS.characterVersion;
+
+  // Chat 데이터 병합
+  if (parsedJson.chatData) {
+    // chats 배열의 각 항목에 누락된 필드 보완
+    const chats = parsedJson.chatData.chats || [structuredClone(DEFAULT_CHAT)];
+    botJson.chats = chats.map((chat: any) => ({
+      message: chat.message || [],
+      note: chat.note || '',
+      name: chat.name || 'Chat 1',
+      localLore: chat.localLore || [],
+      id: chat.id || uuid(), // 빈 문자열이면 uuid 생성
+      fmIndex: chat.fmIndex ?? -1
+    }));
+    botJson.chatFolders = parsedJson.chatData.chatFolders || [];
+    botJson.chatPage = parsedJson.chatData.chatPage ?? 0;
+  } else {
+    const defaultData = structuredClone(DEFAULT_CHAT_DATA);
+    botJson.chats = defaultData.chats;
+    botJson.chatFolders = defaultData.chatFolders;
+    botJson.chatPage = defaultData.chatPage;
+  }
+}
+
+/**
+ * sync.json 파싱 및 필수 필드 보완
+ * @param syncJsonData - 파싱된 sync.json 객체 (또는 문자열)
+ * @returns {parsedJson, modified} - 파싱된 JSON과 수정 여부
+ */
+export function validateAndCompleteSyncJson(syncJsonData: any): { parsedJson: any, modified: boolean } {
+  try {
+    // 이미 객체인 경우 그대로 사용, 문자열인 경우 파싱
+    const parsedJson = typeof syncJsonData === 'string'
+      ? JSON.parse(syncJsonData)
+      : syncJsonData;
+
+    // 공통 필드 보완 함수 사용
+    const fieldsModified = ensureSyncFields(parsedJson);
+    const chatModified = ensureChatData(parsedJson);
+
+    return { parsedJson, modified: fieldsModified || chatModified };
+  } catch (e) {
+    console.error("Failed to parse sync.json", e);
+    throw e;
+  }
+}
+
+/**
+ * settings.yaml 생성 (triggerversion 설정)
+ */
+export function createSettingsYaml(detectedVersion: string): string {
+  return `# Trigger Settings\n# v1: Legacy triggers\n# v2: V2 Header triggers\n# lua: Lua triggers\ntriggerversion: "${detectedVersion}"\n`;
+}
+
+export function isCharacterKey(Path: string): boolean {
+  const rootKey = Path.split('/')[1];
+  return CHARACTER_KEYS.includes(rootKey);
+}
+
+// Trigger Header Templates
+export const V2_TRIGGER_HEADER = {
+  "comment": "",
+  "type": "manual",
+  "conditions": [],
+  "effect": [
+    {
+      "type": "v2Header",
+      "code": "",
+      "indent": 0
+    }
+  ]
+};
+
+export const LUA_TRIGGER_HEADER = {
+  "comment": "",
+  "type": "start",
+  "conditions": [],
+  "effect": [
+    {
+      "type": "triggerlua",
+      "code": ""
+    }
+  ]
+};
+
+// Default Chat Objects
+export const DEFAULT_CHAT = {
+  message: [],
+  note: '',
+  name: 'Chat 1',
+  localLore: [],
+  id: '',
+  fmIndex: -1
+};
+
+export const DEFAULT_CHAT_DATA = {
+  chats: [DEFAULT_CHAT],
+  chatFolders: [],
+  chatPage: 0
+};
+
+export function DEFAULT_SYNC_DATA() {
+  return {
+    chaId: uuid(),
+    type: 'character',
+    tags: [],
+    notes: '',
+    replaceGlobalNote: '',
+    firstMsgIndex: -1,
+    creator: '',
+    characterVersion: '',
+    chatData: {
+      chats: [{
+        message: [],
+        note: '',
+        name: 'Chat 1',
+        localLore: [],
+        id: '',
+        fmIndex: -1
+      }],
+      chatFolders: [],
+      chatPage: 0
+    }
+  };
 }

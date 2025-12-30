@@ -18,12 +18,15 @@ export function createSaveApiHandler(): Connect.NextHandleFunction {
       return next();
     }
 
-    console.log('[SaveAPI] Handling request:', url);
+    // Query String 제거
+    const pathname = url.split('?')[0];
+
+    console.log('[SaveAPI] Handling request:', pathname);
 
     try {
       // PUT /api/save/:folder/character.json - 캐릭터 저장
-      if (req.method === 'PUT' && url.match(/^\/api\/save\/[^/]+\/character\.json$/)) {
-        const match = url.match(/^\/api\/save\/([^/]+)\/character\.json$/);
+      if (req.method === 'PUT' && pathname.match(/^\/api\/save\/[^/]+\/character\.json$/)) {
+        const match = pathname.match(/^\/api\/save\/([^/]+)\/character\.json$/);
         if (match) {
           const folderName = match[1];
           const filePath = path.join(SAVE_DIR, folderName, 'character.json');
@@ -61,7 +64,7 @@ export function createSaveApiHandler(): Connect.NextHandleFunction {
       }
 
       // GET /api/save/list - 폴더 목록
-      if (url === '/api/save/list') {
+      if (pathname === '/api/save/list') {
         console.log('[SaveAPI] Listing folders from:', SAVE_DIR);
         
         // save 폴더가 존재하는지 확인
@@ -96,8 +99,48 @@ export function createSaveApiHandler(): Connect.NextHandleFunction {
         return;
       }
 
+      // GET /api/save/:folderName/mtime - 폴더 최종 수정 시간 조회
+      const mtimeMatch = pathname.match(/^\/api\/save\/([^/]+)\/mtime$/);
+      if (mtimeMatch && req.method === 'GET') {
+        const folderName = decodeURIComponent(mtimeMatch[1]);
+        const folderPath = path.join(SAVE_DIR, folderName);
+        
+        if (!(await fs.pathExists(folderPath))) {
+          res.statusCode = 404;
+          res.end(JSON.stringify({ error: 'Folder not found' }));
+          return;
+        }
+        
+        // 폴더 내 모든 파일의 최신 mtime 찾기
+        async function getLatestMtime(dir: string): Promise<number> {
+          let latestMtime = 0;
+          
+          const items = await fs.readdir(dir, { withFileTypes: true });
+          
+          for (const item of items) {
+            const fullPath = path.join(dir, item.name);
+            const stat = await fs.stat(fullPath);
+            
+            if (item.isDirectory()) {
+              const subMtime = await getLatestMtime(fullPath);
+              latestMtime = Math.max(latestMtime, subMtime);
+            } else {
+              latestMtime = Math.max(latestMtime, stat.mtimeMs);
+            }
+          }
+          
+          return latestMtime;
+        }
+        
+        const mtime = await getLatestMtime(folderPath);
+        
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ mtime }));
+        return;
+      }
+
       // GET /api/save/:folderName/character.json
-      const characterJsonMatch = url.match(/^\/api\/save\/([^/]+)\/character\.json$/);
+      const characterJsonMatch = pathname.match(/^\/api\/save\/([^/]+)\/character\.json$/);
       if (characterJsonMatch && req.method === 'GET') {
         const folderName = decodeURIComponent(characterJsonMatch[1]);
         const filePath = path.join(SAVE_DIR, folderName, 'character.json');
@@ -115,7 +158,7 @@ export function createSaveApiHandler(): Connect.NextHandleFunction {
       }
 
       // GET /api/save/:folderName/file/* - 임의 파일 읽기
-      const fileMatch = url.match(/^\/api\/save\/([^/]+)\/file\/(.+)$/);
+      const fileMatch = pathname.match(/^\/api\/save\/([^/]+)\/file\/(.+)$/);
       if (fileMatch && req.method === 'GET') {
         const folderName = decodeURIComponent(fileMatch[1]);
         const filePath = decodeURIComponent(fileMatch[2]);
