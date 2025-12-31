@@ -620,6 +620,7 @@ export function setDatabase(data:Database){
     }
     changeLanguage(data.language)
 
+    /*
     // 0번 인덱스 마이그레이션 (Save 폴더 봇용 가상 슬롯 확보)
     if (data.characters && data.characters.length > 0) {
         // 0번이 비어있지 않거나(실제 데이터), 가상 슬롯 마커가 없다면 밀어내기
@@ -635,6 +636,7 @@ export function setDatabase(data:Database){
     } else if (!data.characters || data.characters.length === 0) {
         data.characters = [createBlankChar()];
     }
+    */
 
     setDatabaseLite(data)
 }

@@ -36,11 +36,8 @@ if (typeof window !== 'undefined') {
   currentSaveFolderBot.subscribe((bot) => {
     if (bot) {
       // Save Folder Bot이 로드되면 파일 워치 시작
+      // console.log(`[Save Folder Sync] ${isSavingFile}`);
       if (!watchInterval) {
-        if (isSavingFile === 0) {
-          console.log('[Save Folder Sync] Currently saving file, delaying watch start');
-          return;
-        }
 
         console.log('[Save Folder Sync] Started file watching for:', bot.folderName);
 
@@ -51,6 +48,11 @@ if (typeof window !== 'undefined') {
               clearInterval(watchInterval);
               watchInterval = null;
             }
+            return;
+          }
+
+          if (isSavingFile > 0) {
+            console.log('[Save Folder Sync] Currently saving file, delaying watch start');
             return;
           }
 
@@ -111,6 +113,7 @@ if (typeof window !== 'undefined') {
           } catch (error) {
             console.error('[Save Folder Sync] Error checking file changes:', error);
           }
+
         }, 1000); // 1초마다 체크
       }
     } else {
@@ -226,11 +229,7 @@ if (typeof window !== 'undefined') {
         savedfile = true;
       }
 
-      if (isSavingFile > 0) {
-        isSavingFile -= 1;
-      } else {
-        isSavingFile = 0;
-      }
+
 
       // Save 폴더 봇이 로드되면 변경 감지 시작
       if (!checkInterval) {
@@ -246,6 +245,12 @@ if (typeof window !== 'undefined') {
           // 파일 워치로 인한 리로드 중이면 변경 감지 스킵
           if (isReloadingFromFileWatch) {
             return;
+          }
+
+          if (isSavingFile > 0) {
+            isSavingFile -= 1;
+          } else {
+            isSavingFile = 0;
           }
 
           const bot = get(currentSaveFolderBot);

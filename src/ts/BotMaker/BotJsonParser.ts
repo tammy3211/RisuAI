@@ -3,7 +3,7 @@ import { createBlankChar } from 'src/ts/characters'
 import { type MockCharacterDB, createMockCharacter, CreatesyncJson, V2_TRIGGER_HEADER, LUA_TRIGGER_HEADER, mergeSyncToCharacter, validateAndCompleteSyncJson, createSettingsYaml } from 'src/ts/BotMaker/MockCharacterDB.svelte'
 import { parseDocument } from 'yaml';
 import { v4 as uuid } from 'uuid';
-import { loadSyncJson, loadSettingsYaml, saveToFile, saveCharacterJson, saveCharacterData } from './SaveFolderFileManager';
+import { loadSyncJson, loadSettingsYaml, saveToFile, saveCharacterJson, saveCharacterData, removeNulls } from './SaveFolderFileManager';
 import { cloneDeep, omit, defaults } from 'lodash';
 
 export type SourceMap = Record<string, string>;
@@ -231,7 +231,7 @@ function ChangecustomscriptJSON(data: any): customscript[] {
   return [];
 }
 
-export async function parseBotJson(folderName: string): Promise<{ character: character, sourceMap: SourceMap }> {
+export async function parseBotJson(folderName: string): Promise<{ character: character, sourceMap: SourceMap, error?: boolean }> {
   let botJson: character = createBlankChar();
   // rootUrl을 /file/ 경로를 포함하도록 수정하여, 이후 모든 상대 경로가 /file/ 아래로 해석되게 함
   const rootUrl = `/api/save/${folderName}/file/`;
@@ -255,7 +255,7 @@ export async function parseBotJson(folderName: string): Promise<{ character: cha
       rawJson = JSON.parse(text);
     } catch (e) {
       console.error('[parseBotJson] Failed to parse JSON:', e);
-      throw new Error('Failed to parse character.json');
+      return { character: botJson, sourceMap: {}, error: true };
     }
 
     const sourceMap: SourceMap = {};
@@ -312,7 +312,7 @@ export async function parseBotJson(folderName: string): Promise<{ character: cha
 
   } catch (error) {
     console.error('[parseBotJson] Error:', error);
-    return { character: botJson, sourceMap: {} };
+    return { character: botJson, sourceMap: {}, error: true };
   }
 }
 

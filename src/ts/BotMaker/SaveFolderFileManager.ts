@@ -63,7 +63,8 @@ async function readJson(folderName: string, filePath: string): Promise<any | nul
  * JSON 파일 쓰기
  */
 async function writeJson(folderName: string, filePath: string, data: any): Promise<boolean> {
-  const content = JSON.stringify(data, null, 2);
+  const cleanedData = removeNulls(data);
+  const content = JSON.stringify(cleanedData, null, 2);
   return await writeFile(folderName, filePath, content);
 }
 
@@ -240,6 +241,29 @@ export async function saveToSyncJson(folderName: string, path: string, value: an
   console.log(`[saveToSyncJson] Saved to sync.json`);
 
 
+}
+
+/**
+ * 객체나 배열을 순회하며 null/undefined를 제거하는 함수
+ */
+export function removeNulls(obj: any): any {
+  // 1. 배열인 경우: null 걸러내고, 내부 아이템도 재귀적으로 청소
+  if (Array.isArray(obj)) {
+    return obj
+      .filter(item => item != null) // null 삭제
+      .map(item => removeNulls(item)); // 내부도 확인
+  }
+
+  // 2. 객체인 경우: 속성 하나하나 확인
+  if (typeof obj === 'object' && obj !== null) {
+    for (const key in obj) {
+      obj[key] = removeNulls(obj[key]);
+    }
+    return obj;
+  }
+
+  // 3. 그 외(문자, 숫자 등)는 그냥 반환
+  return obj;
 }
 
 /**
