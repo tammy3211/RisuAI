@@ -248,6 +248,8 @@ export async function saveToSyncJson(folderName: string, path: string, value: an
   await writeJson(folderName, '.metadata/sync.json', syncData);
   
   console.log(`[saveToSyncJson] Saved to sync.json`);
+
+  
 }
 
 /**
@@ -270,12 +272,42 @@ export async function loadSettingsYaml(folderName: string): Promise<string | nul
 export async function writeLorebook() {
   // 입력값, 소스 맵, 폴더 이름을 받아서 lorebook 파일을 작성하는 로직 구현
 
+  // globalLore 항목 찾기
+
+  // sourceMap에서 lorebook 관련 경로 찾기(root 경로인지 따로 분리된 경로인지)
+
+  // Lorebook 파일 열기
+
+  // 1. type == 'risu'라면 (예외처리)
+  // 변경된 내용을 data 항목에 저장
+
+
+  // 2. type != 'risu'라면 혹은 없으면 (기본 저장)
+  // saveCharacterData 사용
 }
 
 /**
  * customscripts 쓰기
  */
+export async function writeCustomScripts() {
+  // 입력값, 소스 맵, 폴더 이름을 받아서 customscripts 파일을 작성하는 로직 구현
+
+  // customScripts 항목 찾기
+
+  // sourceMap에서 customscripts 관련 경로 찾기(root 경로인지 따로 분리된 경로인지)
+
+  // Customscripts 파일 열기
+
+  // 1. type == 'regex'라면 (예외처리)
+  // 변경된 내용을 scripts 항목에 저장
+
+  // 2. type != 'regex'라면 혹은 없으면 (기본 저장)
+  // saveCharacterData 사용
+}
 
 /**
  * 에셋 저장/삭제
  */
+export async function saveAsset(folderName: string, assetPath: string, data: ArrayBuffer) {
+
+}

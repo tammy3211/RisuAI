@@ -1,10 +1,10 @@
 import { writable, get } from "svelte/store";
 import type { character } from "./storage/database.svelte";
 import { isCharacterKey } from "./BotMaker/MockCharacterDB.svelte";
-import { 
-  getValueByPath, 
-  saveToFile, 
-  saveCharacterJson, 
+import {
+  getValueByPath,
+  saveToFile,
+  saveCharacterJson,
   saveToSyncJson,
   saveCharacterData
 } from "./BotMaker/SaveFolderFileManager";
@@ -41,7 +41,7 @@ if (typeof window !== 'undefined') {
         }
 
         console.log('[Save Folder Sync] Started file watching for:', bot.folderName);
-        
+
         watchInterval = setInterval(async () => {
           const current = get(currentSaveFolderBot);
           if (!current) {
@@ -78,7 +78,7 @@ if (typeof window !== 'undefined') {
               // 현재 웹 데이터와 파일 데이터 비교
               const { DBState } = await import('./stores.svelte');
               const currentWebData = DBState.db.characters[0];
-              
+
               // 웹 데이터와 파일 데이터가 같으면 리로드 스킵 (lodash isEqual 사용)
               if (currentWebData && isEqual(currentWebData, character)) {
                 console.log('[Save Folder Sync] File data matches web data, skipping reload');
@@ -126,10 +126,10 @@ if (typeof window !== 'undefined') {
 // 변경 사항 추적 (diff 라이브러리 사용)
 function findChangedPaths(prev: any, curr: any): string[] {
   const changes: string[] = [];
-  
+
   // JSON diff를 사용하여 변경사항 추출
   const diff = Diff.diffJson(prev, curr);
-  
+
   // diff 결과를 순회하며 변경사항 파싱
   diff.forEach((part) => {
     if (part.added || part.removed) {
@@ -149,13 +149,13 @@ function findChangedPaths(prev: any, curr: any): string[] {
       }
     }
   });
-  
+
   // 깊은 비교로 업데이트된 필드 찾기
   function extractChanges(obj: any, prefix: string, type: 'added' | 'removed') {
     for (const key in obj) {
       const path = prefix ? `${prefix}.${key}` : key;
       const value = obj[key];
-      
+
       if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
         extractChanges(value, path, type);
       } else {
@@ -167,17 +167,17 @@ function findChangedPaths(prev: any, curr: any): string[] {
       }
     }
   }
-  
+
   // updated 필드 찾기 (추가도 삭제도 아닌 경우)
   function findUpdated(prevObj: any, currObj: any, prefix: string = '') {
     if (!prevObj || !currObj) return;
     if (typeof prevObj !== 'object' || typeof currObj !== 'object') return;
-    
+
     for (const key in currObj) {
       const path = prefix ? `${prefix}.${key}` : key;
-      
+
       if (!(key in prevObj)) continue; // 추가된 것은 이미 처리됨
-      
+
       if (typeof currObj[key] === 'object' && currObj[key] !== null) {
         if (Array.isArray(currObj[key]) && Array.isArray(prevObj[key])) {
           if (isEqual(prevObj[key], currObj[key]) === false) {
@@ -197,9 +197,9 @@ function findChangedPaths(prev: any, curr: any): string[] {
       }
     }
   }
-  
+
   findUpdated(prev, curr);
-  
+
   return changes;
 }
 
@@ -218,33 +218,26 @@ async function saveChangesToFiles(
     if (colonIndex === -1) continue;
 
     const path = changeStr.substring(0, colonIndex).trim();
-    
+
     // 경로를 JSON 포인터 형식으로 변환 (/name 형식)
     const jsonPointer = '/' + path.replace(/\./g, '/').replace(/\[/g, '/').replace(/\]/g, '');
 
     // 예외 처리: 에셋 관련 필드는 건너뛰기
-    if (jsonPointer.startsWith('/image') || 
-        jsonPointer.startsWith('/emotionImages') || 
-        jsonPointer.startsWith('/additionalAssets') || 
-        jsonPointer.startsWith('/ccAssets')) {
+    if (jsonPointer.startsWith('/image') ||
+      jsonPointer.startsWith('/emotionImages') ||
+      jsonPointer.startsWith('/additionalAssets') ||
+      jsonPointer.startsWith('/ccAssets')) {
       console.log(`[Save Folder] Skipping asset field: ${jsonPointer}`);
       continue;
     }
 
-    // 예외 처리: chats 관련 데이터는 감지만 하고 저장은 스킵
-
     if (jsonPointer.startsWith('/chats')) {
-      const newValue = getValueByPath(currentData, jsonPointer);
       console.log(`[Save Folder] CHAT CHANGE DETECTED:`);
-      console.log(`  - JSON Pointer: ${jsonPointer}`);
-      console.log(`  - New Value:`, newValue);
-      console.log(`  - Change String: ${changeStr}`);
     }
-
 
     // 예외 처리: globalLore, customscript는 로그만 출력
     if (jsonPointer.startsWith('/globalLore') || jsonPointer.startsWith('/customscript')) {
-      console.log(`[Save Folder] Change detected in ${jsonPointer} but auto-save is not supported yet`);
+      console.log(`[Save Folder] Change detected in ${jsonPointer} : ${path} : ${getValueByPath(currentData, jsonPointer)} but auto-save is not supported yet`);
       continue;
     }
 
@@ -256,17 +249,17 @@ async function saveChangesToFiles(
     } else {
       // Non-character 데이터 - sync.json에 저장
       // console.log(`[Save Folder] TEMPORARILY DISABLED sync.json save: ${jsonPointer}`);
-      
+
       const newValue = getValueByPath(currentData, jsonPointer);
-      
+
       // sync.json 저장 중 플래그 설정 (파일 변경 감지 방지)
       isReloadingFromFileWatch = true;
       await saveToSyncJson(folderName, path, newValue);
       setTimeout(() => {
         isReloadingFromFileWatch = false;
       }, 1000);
-      
-      console.log(`[Save Folder] Saved ${jsonPointer} to sync.json`);
+
+      console.log(`[Save Folder] Saved ${jsonPointer} : ${path} : ${newValue} to sync.json`);
     }
   }
 }
@@ -280,12 +273,12 @@ if (typeof window !== 'undefined') {
     if (currentBot) {
       // 리로드나 초기 로드 시 previousData를 최신 상태로 리셋
       // 이를 통해 리로드 직후 런타임 데이터가 사라진 것을 '삭제됨'으로 오인하는 문제 방지
-      if (savedfile === false){
+      if (savedfile === false) {
         previousData = cloneDeep(currentBot.character);
         savedfile = true;
       }
 
-      if (isSavingFile > 0){
+      if (isSavingFile > 0) {
         isSavingFile -= 1;
       } else {
         isSavingFile = 0;
@@ -300,7 +293,7 @@ if (typeof window !== 'undefined') {
         //     previousData = JSON.parse(JSON.stringify(currentData));
         //   }
         // });
-        
+
         checkInterval = setInterval(() => {
           // 파일 워치로 인한 리로드 중이면 변경 감지 스킵
           if (isReloadingFromFileWatch) {
@@ -321,7 +314,7 @@ if (typeof window !== 'undefined') {
             const currentData = DBState.db.characters?.[0];
             // console.log(`[Save Folder Bot DEBUG] chats array: ${JSON.stringify(DBState.db.characters[0].chats)}`);
             if (!currentData) return;
-            
+
             // Save Folder Bot은 항상 character 타입이어야 함
             if (currentData.type === 'group') return;
 
@@ -333,18 +326,19 @@ if (typeof window !== 'undefined') {
               // console.log(`  - Previous chats: ${JSON.stringify(previousData.chats[previousData.chatPage])}`);
               // console.log(`  - Current chats: ${JSON.stringify(currentData.chats[currentData.chatPage])}`);
 
-              if (isEqual(previousData, currentData) === false){
+              if (isEqual(previousData, currentData) === false) {
                 savedfile = false;
-                
+
                 isSavingFile = 6;
-                
-                console.log('[Save Folder Bot DEBUG] CHATS ARRAY LENGTH CHANGED:');
-                console.log(`  - Previous length: ${prevChatsLength}`);
-                console.log(`  - Current length: ${currChatsLength}`);
-                console.log(`  - Previous chats:`, previousData.chats?.map(c => ({ name: c.name, id: c.id })));
-                console.log(`  - Current chats:`, currentData.chats?.map(c => ({ name: c.name, id: c.id })));
-                
-              } else{
+
+                if (prevChatsLength !== currChatsLength) {
+                  console.log('[Save Folder Bot DEBUG] CHATS ARRAY LENGTH CHANGED:');
+                  console.log(`  - Previous length: ${prevChatsLength}`);
+                  console.log(`  - Current length: ${currChatsLength}`);
+                  console.log(`  - Previous chats:`, previousData.chats?.map(c => ({ name: c.name, id: c.id })));
+                  console.log(`  - Current chats:`, currentData.chats?.map(c => ({ name: c.name, id: c.id })));
+                }
+              } else {
                 //console.log('[Save Folder Bot] No change');
               }
 
@@ -354,7 +348,7 @@ if (typeof window !== 'undefined') {
                 console.log('[Save Folder Bot] Changes detected:');
                 changes.forEach(change => console.log('  -', change));
 
-                
+
                 // 변경사항을 파일에 저장
                 await saveChangesToFiles(bot.folderName, changes, currentData, bot.sourceMap);
               }
@@ -365,7 +359,7 @@ if (typeof window !== 'undefined') {
           });
         }, 500); // 0.5초마다 체크
       }
-      
+
     } else {
       // Save 폴더 봇이 언로드되면 변경 감지 중지
       if (checkInterval) {
