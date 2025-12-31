@@ -1,3 +1,4 @@
+import pointer from 'json-pointer';
 /**
  * Save Folder 파일 읽기/쓰기 유틸리티
  */
@@ -7,7 +8,7 @@
  */
 async function readFile(folderName: string, filePath: string): Promise<string | null> {
   const url = `/api/save/${folderName}/file/${filePath}`;
-  
+
   try {
     const res = await fetch(url);
     if (!res.ok) {
@@ -25,13 +26,13 @@ async function readFile(folderName: string, filePath: string): Promise<string | 
  */
 async function writeFile(folderName: string, filePath: string, content: string): Promise<boolean> {
   const url = `/api/save/${folderName}/file/${filePath}`;
-  
+
   try {
     const res = await fetch(url, {
       method: 'POST',
       body: content
     });
-    
+
     if (!res.ok) {
       console.error(`[FileManager] Failed to write ${filePath}: ${res.status}`);
       return false;
@@ -49,7 +50,7 @@ async function writeFile(folderName: string, filePath: string, content: string):
 async function readJson(folderName: string, filePath: string): Promise<any | null> {
   const content = await readFile(folderName, filePath);
   if (!content) return null;
-  
+
   try {
     return JSON.parse(content);
   } catch (error) {
@@ -69,34 +70,23 @@ async function writeJson(folderName: string, filePath: string, data: any): Promi
 /**
  * JSON 포인터 경로(예: /name, /desc)를 객체에서 값을 가져오는 함수
  */
+/**
+ * JSON 포인터 경로(예: /name, /desc)를 객체에서 값을 가져오는 함수
+ */
 export function getValueByPath(obj: any, path: string): any {
   if (!path || path === '') return obj;
-  const keys = path.split('/').filter(k => k !== '');
-  let current = obj;
-  for (const key of keys) {
-    if (current === null || current === undefined) return undefined;
-    current = current[key];
+  try {
+    return pointer.get(obj, path);
+  } catch (e) {
+    return undefined;
   }
-  return current;
 }
 
 /**
  * 객체 경로로 값 설정
  */
 export function setValueByPath(obj: any, path: string, value: any): void {
-  const keys = path.split('/').filter(k => k !== '');
-  let current = obj;
-  
-  for (let i = 0; i < keys.length - 1; i++) {
-    const key = keys[i];
-    if (!(key in current)) {
-      current[key] = {};
-    }
-    current = current[key];
-  }
-  
-  const lastKey = keys[keys.length - 1];
-  current[lastKey] = value;
+  pointer.set(obj, path, value);
 }
 
 /**
@@ -120,15 +110,15 @@ export async function saveCharacterData(
   let parentPointer = jsonPointer;
   while (parentPointer.lastIndexOf('/') > 0) {
     parentPointer = parentPointer.substring(0, parentPointer.lastIndexOf('/'));
-    
+
     if (sourceMap[parentPointer]) {
       const filePath = sourceMap[parentPointer];
-      
+
       // JSON 파일인 경우에만 내부 수정 가능
       if (filePath.endsWith('.json')) {
         const relativePath = jsonPointer.substring(parentPointer.length);
         console.log(`[FileManager] Found parent ${parentPointer} in SourceMap -> ${filePath}`);
-        
+
         const externalData = await readJson(folderName, filePath);
         if (externalData) {
           setValueByPath(externalData, relativePath, value);
@@ -180,7 +170,7 @@ export async function saveCharacterJson(folderName: string, fieldPath: string, v
  */
 export async function saveToSyncJson(folderName: string, path: string, value: any): Promise<void> {
   console.log(`[saveToSyncJson] path: ${path}, value:`, value);
-  
+
   // 기존 sync.json 로드 (없으면 빈 객체)
   let syncData = await readJson(folderName, '.metadata/sync.json') || {};
 
@@ -192,7 +182,7 @@ export async function saveToSyncJson(folderName: string, path: string, value: an
   // 2. 배열 인덱스 [0] 처리
   const pathSegments: (string | number)[] = [];
   const parts = mappedPath.split('.');
-  
+
   for (const part of parts) {
     // 배열 인덱스가 포함된 경우: "chats[0]" -> ["chats", 0]
     const arrayMatch = part.match(/^(.+?)\[(\d+)\]$/);
@@ -208,18 +198,18 @@ export async function saveToSyncJson(folderName: string, path: string, value: an
 
   // 경로를 따라 이동하면서 값 설정
   let current: any = syncData;
-  
+
   for (let i = 0; i < pathSegments.length - 1; i++) {
     const key = pathSegments[i];
     const nextKey = pathSegments[i + 1];
-    
+
     console.log(`[saveToSyncJson] key: ${key}, nextKey: ${nextKey}, current[key]:`, current[key]);
-    
+
     // 다음 키가 숫자면 배열 생성, 아니면 객체 생성
     if (!(key in current)) {
       current[key] = typeof nextKey === 'number' ? [] : {};
     }
-    
+
     // 배열인 경우, 인덱스가 범위를 벗어나면 배열 확장 (null로 채우지 않음)
     if (Array.isArray(current[key]) && typeof key === 'number') {
       // 배열 요소는 미리 생성하지 않음 (값이 설정될 때만 생성)
@@ -227,13 +217,13 @@ export async function saveToSyncJson(folderName: string, path: string, value: an
       // 다음이 배열 인덱스인 경우, 현재 위치로 이동만 함
       // 실제 값은 마지막 단계에서 설정됨
     }
-    
+
     current = current[key];
   }
-  
+
   const lastKey = pathSegments[pathSegments.length - 1];
   console.log(`[saveToSyncJson] Setting ${lastKey} to`, value, 'in', current);
-  
+
   // undefined 값은 저장하지 않음 (JSON에서 제거됨)
   if (value === undefined) {
     console.log(`[saveToSyncJson] Skipping undefined value for ${lastKey}`);
@@ -246,10 +236,10 @@ export async function saveToSyncJson(folderName: string, path: string, value: an
 
   // 저장
   await writeJson(folderName, '.metadata/sync.json', syncData);
-  
+
   console.log(`[saveToSyncJson] Saved to sync.json`);
 
-  
+
 }
 
 /**
@@ -269,45 +259,152 @@ export async function loadSettingsYaml(folderName: string): Promise<string | nul
 /**
  * lorebook 쓰기
  */
-export async function writeLorebook() {
-  // 입력값, 소스 맵, 폴더 이름을 받아서 lorebook 파일을 작성하는 로직 구현
+/**
+ * lorebook 쓰기
+ */
+export async function writeLorebook(
+  folderName: string,
+  jsonPointer: string,
+  value: any,
+  sourceMap: Record<string, string>
+) {
+  // 1. SourceMap이나 상위 경로를 통해 파일 찾기
+  let parentPointer = jsonPointer;
+  let filePath = sourceMap[parentPointer];
 
-  // globalLore 항목 찾기
+  // 정확한 경로가 없으면 상위 경로 탐색
+  while (!filePath && parentPointer.lastIndexOf('/') > 0) {
+    parentPointer = parentPointer.substring(0, parentPointer.lastIndexOf('/'));
+    if (sourceMap[parentPointer]) {
+      filePath = sourceMap[parentPointer];
+      break;
+    }
+  }
 
-  // sourceMap에서 lorebook 관련 경로 찾기(root 경로인지 따로 분리된 경로인지)
+  // 파일이 없으면 기본 character.json에 저장 (단, globalLore 루트인 경우)
+  if (!filePath) {
+    // globalLore는 보통 루트에 있으므로 character.json에 저장 시도
+    if (jsonPointer.startsWith('/globalLore')) {
+      await saveCharacterJson(folderName, jsonPointer, value);
+      console.log(`[FileManager] Saved ${jsonPointer} to character.json (No external file found)`);
+    } else {
+      console.warn(`[FileManager] No file found for ${jsonPointer}`);
+    }
+    return;
+  }
 
-  // Lorebook 파일 열기
+  // 2. 파일 확장자 확인
+  // JSON 파일이 아니면 (예: .md, .txt) 파일 전체를 덮어씀
+  if (!filePath.toLowerCase().endsWith('.json')) {
+    await saveToFile(folderName, filePath, value);
+    console.log(`[FileManager] Saved ${jsonPointer} to ${filePath} (Non-JSON Direct Save)`);
+    return;
+  }
 
-  // 1. type == 'risu'라면 (예외처리)
-  // 변경된 내용을 data 항목에 저장
+  // 3. 파일 읽기
+  const externalData = await readJson(folderName, filePath);
+  if (!externalData) {
+    console.error(`[FileManager] Failed to read ${filePath}`);
+    return;
+  }
 
+  // 4. 상대 경로 계산
+  // parentPointer가 /globalLore 이고 jsonPointer가 /globalLore/0/content 면 -> /0/content
+  let relativePath = jsonPointer === parentPointer
+    ? ''
+    : jsonPointer.substring(parentPointer.length);
 
-  // 2. type != 'risu'라면 혹은 없으면 (기본 저장)
-  // saveCharacterData 사용
+  // 5. Wrapper 체크 (type: 'risu')
+  // 만약 파일이 Risu 포맷 Wrapper({ type: 'risu', data: [...] })라면 경로 수정
+  if (externalData.type === 'risu' && Array.isArray(externalData.data)) {
+    // 상대 경로 앞에 /data 추가
+    relativePath = '/data' + relativePath;
+  }
+
+  // 6. 값 설정 및 저장
+  if (relativePath === '') {
+    // 상대 경로가 비어있다면 파일 전체를 교체하는 것임 (Wrapper가 아닐 경우)
+    // setValueByPath는 루트 객체 교체를 지원하지 않으므로 바로 저장
+    await writeJson(folderName, filePath, value);
+    console.log(`[FileManager] Saved ${jsonPointer} to ${filePath} (Root Replacement)`);
+  } else {
+    setValueByPath(externalData, relativePath, value);
+    await writeJson(folderName, filePath, externalData);
+    console.log(`[FileManager] Saved ${jsonPointer} to ${filePath} (adjusted path: ${relativePath})`);
+  }
 }
 
 /**
  * customscripts 쓰기
  */
-export async function writeCustomScripts() {
-  // 입력값, 소스 맵, 폴더 이름을 받아서 customscripts 파일을 작성하는 로직 구현
+export async function writeCustomScripts(
+  folderName: string,
+  jsonPointer: string,
+  value: any,
+  sourceMap: Record<string, string>
+) {
+  // 1. SourceMap이나 상위 경로를 통해 파일 찾기
+  let parentPointer = jsonPointer;
+  let filePath = sourceMap[parentPointer];
 
-  // customScripts 항목 찾기
+  while (!filePath && parentPointer.lastIndexOf('/') > 0) {
+    parentPointer = parentPointer.substring(0, parentPointer.lastIndexOf('/'));
+    if (sourceMap[parentPointer]) {
+      filePath = sourceMap[parentPointer];
+      break;
+    }
+  }
 
-  // sourceMap에서 customscripts 관련 경로 찾기(root 경로인지 따로 분리된 경로인지)
+  if (!filePath) {
+    if (jsonPointer.startsWith('/customscript')) {
+      await saveCharacterJson(folderName, jsonPointer, value);
+      console.log(`[FileManager] Saved ${jsonPointer} to character.json (No external file found)`);
+    } else {
+      console.warn(`[FileManager] No file found for ${jsonPointer}`);
+    }
+    return;
+  }
 
-  // Customscripts 파일 열기
+  // 2. 파일 확장자 확인
+  if (!filePath.toLowerCase().endsWith('.json')) {
+    await saveToFile(folderName, filePath, value);
+    console.log(`[FileManager] Saved ${jsonPointer} to ${filePath} (Non-JSON Direct Save)`);
+    return;
+  }
 
-  // 1. type == 'regex'라면 (예외처리)
-  // 변경된 내용을 scripts 항목에 저장
+  // 3. 파일 읽기
+  const externalData = await readJson(folderName, filePath);
+  if (!externalData) {
+    console.error(`[FileManager] Failed to read ${filePath}`);
+    return;
+  }
 
-  // 2. type != 'regex'라면 혹은 없으면 (기본 저장)
-  // saveCharacterData 사용
+  // 4. 상대 경로 계산
+  let relativePath = jsonPointer === parentPointer
+    ? ''
+    : jsonPointer.substring(parentPointer.length);
+
+  // 5. Wrapper 체크 (type: 'regex')
+  if (externalData.type === 'regex' && Array.isArray(externalData.data)) {
+    relativePath = '/data' + relativePath;
+  }
+
+  // 6. 값 설정 및 저장
+  if (relativePath === '') {
+    // 상대 경로가 비어있다면 파일 전체를 교체하는 것임
+    await writeJson(folderName, filePath, value);
+    console.log(`[FileManager] Saved ${jsonPointer} to ${filePath} (Root Replacement)`);
+  } else {
+    setValueByPath(externalData, relativePath, value);
+    await writeJson(folderName, filePath, externalData);
+    console.log(`[FileManager] Saved ${jsonPointer} to ${filePath} (adjusted path: ${relativePath})`);
+  }
 }
 
 /**
  * 에셋 저장/삭제
  */
 export async function saveAsset(folderName: string, assetPath: string, data: ArrayBuffer) {
-
+  // 에셋 저장 로직 (필요 시 구현)
+  // 현재는 텍스트/JSON 저장에 집중
 }

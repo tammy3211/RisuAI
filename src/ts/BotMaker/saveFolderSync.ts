@@ -1,17 +1,19 @@
 import { writable, get } from "svelte/store";
-import type { character } from "./storage/database.svelte";
-import { isCharacterKey } from "./BotMaker/MockCharacterDB.svelte";
+import type { character } from "../storage/database.svelte";
+import { isCharacterKey } from "./MockCharacterDB.svelte";
 import {
   getValueByPath,
   saveToFile,
   saveCharacterJson,
   saveToSyncJson,
-  saveCharacterData
-} from "./BotMaker/SaveFolderFileManager";
-import { selectedCharID } from "./stores.svelte";
-import { DBState } from 'src/ts/stores.svelte';
+  saveCharacterData,
+  writeLorebook,
+  writeCustomScripts
+} from "./SaveFolderFileManager";
+import { selectedCharID } from "../stores.svelte";
 import { isEqual, cloneDeep } from 'lodash';
 import * as Diff from 'diff';
+import { compare } from 'fast-json-patch';
 
 export const currentSaveFolderBot = writable<{
   character: character,
@@ -72,11 +74,11 @@ if (typeof window !== 'undefined') {
               isReloadingFromFileWatch = true;
 
               // 파일이 변경되었으므로 다시 로드
-              const { parseBotJson } = await import('./BotMaker/BotJsonParser');
+              const { parseBotJson } = await import('./BotJsonParser');
               const { character, sourceMap } = await parseBotJson(current.folderName);
 
               // 현재 웹 데이터와 파일 데이터 비교
-              const { DBState } = await import('./stores.svelte');
+              const { DBState } = await import('../stores.svelte');
               const currentWebData = DBState.db.characters[0];
 
               // 웹 데이터와 파일 데이터가 같으면 리로드 스킵 (lodash isEqual 사용)
@@ -123,84 +125,13 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// 변경 사항 추적 (diff 라이브러리 사용)
+// 변경 사항 추적 (fast-json-patch 사용)
 function findChangedPaths(prev: any, curr: any): string[] {
-  const changes: string[] = [];
-
-  // JSON diff를 사용하여 변경사항 추출
-  const diff = Diff.diffJson(prev, curr);
-
-  // diff 결과를 순회하며 변경사항 파싱
-  diff.forEach((part) => {
-    if (part.added || part.removed) {
-      try {
-        const obj = JSON.parse(part.value);
-        extractChanges(obj, '', part.added ? 'added' : 'removed');
-      } catch (e) {
-        // JSON 파싱 실패 시 원본 값 사용
-        const lines = part.value.split('\n').filter(l => l.trim());
-        lines.forEach(line => {
-          const match = line.match(/"([^"]+)":/);
-          if (match) {
-            const key = match[1];
-            changes.push(`${key}: ${part.added ? 'added' : 'removed'}`);
-          }
-        });
-      }
-    }
+  const patches = compare(prev, curr);
+  return patches.map(patch => {
+    // patch.path는 "/globalLore/0/content" 형태
+    return `${patch.path}: ${patch.op}`;
   });
-
-  // 깊은 비교로 업데이트된 필드 찾기
-  function extractChanges(obj: any, prefix: string, type: 'added' | 'removed') {
-    for (const key in obj) {
-      const path = prefix ? `${prefix}.${key}` : key;
-      const value = obj[key];
-
-      if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-        extractChanges(value, path, type);
-      } else {
-        if (type === 'added') {
-          changes.push(`${path}: added`);
-        } else {
-          changes.push(`${path}: removed`);
-        }
-      }
-    }
-  }
-
-  // updated 필드 찾기 (추가도 삭제도 아닌 경우)
-  function findUpdated(prevObj: any, currObj: any, prefix: string = '') {
-    if (!prevObj || !currObj) return;
-    if (typeof prevObj !== 'object' || typeof currObj !== 'object') return;
-
-    for (const key in currObj) {
-      const path = prefix ? `${prefix}.${key}` : key;
-
-      if (!(key in prevObj)) continue; // 추가된 것은 이미 처리됨
-
-      if (typeof currObj[key] === 'object' && currObj[key] !== null) {
-        if (Array.isArray(currObj[key]) && Array.isArray(prevObj[key])) {
-          if (isEqual(prevObj[key], currObj[key]) === false) {
-            const prevValue = String(prevObj[key]).substring(0, 100);
-            const currValue = String(currObj[key]).substring(0, 100);
-            changes.push(`${path}: "${prevValue}" -> "${currValue}"`);
-          }
-        } else {
-          findUpdated(prevObj[key], currObj[key], path);
-        }
-      } else {
-        if (isEqual(prevObj[key], currObj[key]) === false) {
-          const prevValue = String(prevObj[key]).substring(0, 100);
-          const currValue = String(currObj[key]).substring(0, 100);
-          changes.push(`${path}: "${prevValue}" -> "${currValue}"`);
-        }
-      }
-    }
-  }
-
-  findUpdated(prev, curr);
-
-  return changes;
 }
 
 /**
@@ -213,14 +144,20 @@ async function saveChangesToFiles(
   sourceMap: Record<string, string>
 ): Promise<void> {
   for (const changeStr of changes) {
-    // 변경 문자열 파싱: "path: oldValue -> newValue" 형식
+    // 변경 문자열 파싱: "path: oldValue -> newValue" 형식 또는 "path: op"
     const colonIndex = changeStr.indexOf(':');
     if (colonIndex === -1) continue;
 
     const path = changeStr.substring(0, colonIndex).trim();
+    let jsonPointer = '';
 
-    // 경로를 JSON 포인터 형식으로 변환 (/name 형식)
-    const jsonPointer = '/' + path.replace(/\./g, '/').replace(/\[/g, '/').replace(/\]/g, '');
+    // 이미 JSON Pointer 형식이면 그대로 사용
+    if (path.startsWith('/')) {
+      jsonPointer = path;
+    } else {
+      // 기존 점 표기법 등을 JSON Pointer로 변환
+      jsonPointer = '/' + path.replace(/\./g, '/').replace(/\[/g, '/').replace(/\]/g, '');
+    }
 
     // 예외 처리: 에셋 관련 필드는 건너뛰기
     if (jsonPointer.startsWith('/image') ||
@@ -235,9 +172,16 @@ async function saveChangesToFiles(
       console.log(`[Save Folder] CHAT CHANGE DETECTED:`);
     }
 
-    // 예외 처리: globalLore, customscript는 로그만 출력
-    if (jsonPointer.startsWith('/globalLore') || jsonPointer.startsWith('/customscript')) {
-      console.log(`[Save Folder] Change detected in ${jsonPointer} : ${path} : ${getValueByPath(currentData, jsonPointer)} but auto-save is not supported yet`);
+    // 예외 처리: globalLore, customscript는 로그만 출력 -> 이제 저장 지원
+    if (jsonPointer.startsWith('/globalLore')) {
+      const newValue = getValueByPath(currentData, jsonPointer);
+      await writeLorebook(folderName, jsonPointer, newValue, sourceMap);
+      continue;
+    }
+
+    if (jsonPointer.startsWith('/customscript')) {
+      const newValue = getValueByPath(currentData, jsonPointer);
+      await writeCustomScripts(folderName, jsonPointer, newValue, sourceMap);
       continue;
     }
 
@@ -254,7 +198,11 @@ async function saveChangesToFiles(
 
       // sync.json 저장 중 플래그 설정 (파일 변경 감지 방지)
       isReloadingFromFileWatch = true;
-      await saveToSyncJson(folderName, path, newValue);
+      // sync.json은 dot notation을 사용하므로 변환 필요
+      // 예: /foo/bar -> foo.bar
+      const dotPath = jsonPointer.substring(1).replace(/\//g, '.');
+
+      await saveToSyncJson(folderName, dotPath, newValue);
       setTimeout(() => {
         isReloadingFromFileWatch = false;
       }, 1000);
@@ -310,7 +258,7 @@ if (typeof window !== 'undefined') {
           }
 
           // DBState는 동적으로 import
-          import('./stores.svelte').then(async ({ DBState }) => {
+          import('../stores.svelte').then(async ({ DBState }) => {
             const currentData = DBState.db.characters?.[0];
             // console.log(`[Save Folder Bot DEBUG] chats array: ${JSON.stringify(DBState.db.characters[0].chats)}`);
             if (!currentData) return;

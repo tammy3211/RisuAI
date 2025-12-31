@@ -51,7 +51,7 @@
   import { loadSaveFolderBots, type SaveFolderBot } from "../../ts/BotMaker/saveFolderLoader.svelte";
   import { isTauri } from "src/ts/globalApi.svelte";
   import { parseBotJson } from "../../ts/BotMaker/BotJsonParser";
-  import { currentSaveFolderBot } from "../../ts/saveFolderSync";
+  import { currentSaveFolderBot } from "../../ts/BotMaker/saveFolderSync";
   
   let sideBarMode = $state(0);
   let editMode = $state(false);

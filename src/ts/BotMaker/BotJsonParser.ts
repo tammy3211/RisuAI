@@ -26,7 +26,7 @@ async function validateFileContent(folderName: string, jsonData: MockCharacterDB
       console.log(`[validateFileContent] Missing key added: ${key}`);
       // @ts-ignore
       json[key] = mock[key];
-      
+
       // 누락된 키를 character.json에 즉시 저장 ($ref 보존을 위해 saveCharacterJson 사용)
       try {
         // @ts-ignore
@@ -103,7 +103,7 @@ async function validateFileContent(folderName: string, jsonData: MockCharacterDB
   if (triggerModified) {
     console.log(`[validateFileContent] triggerscript normalized, saving...`);
     json.triggerscript = normalizedTriggerScript;
-    
+
     try {
       // SourceMap을 활용하여 적절한 위치(외부 파일 또는 character.json)에 저장
       await saveCharacterData(folderName, '/triggerscript', json.triggerscript, sourceMap);
@@ -157,10 +157,10 @@ async function recursiveTraverse(
 
       try {
         // 캐시 방지를 위한 타임스탬프 추가
-        const fetchUrl = resolvedUrl.includes('?') 
-          ? `${resolvedUrl}&t=${Date.now()}` 
+        const fetchUrl = resolvedUrl.includes('?')
+          ? `${resolvedUrl}&t=${Date.now()}`
           : `${resolvedUrl}?t=${Date.now()}`;
-          
+
         const res = await fetch(fetchUrl);
         if (!res.ok) {
           console.warn(`[BotJsonParser] Failed to load ref: ${resolvedUrl} (${res.status})`);

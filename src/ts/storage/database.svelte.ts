@@ -13,7 +13,7 @@ import type { PromptItem, PromptSettings } from '../process/prompt';
 import type { OobaChatCompletionRequestParams } from '../model/ooba';
 import { type HypaV3Settings, type HypaV3Preset, createHypaV3Preset } from '../process/memory/hypav3'
 import { createBlankChar } from '../characters';
-import { currentSaveFolderBot } from "../saveFolderSync";
+import { currentSaveFolderBot } from "../BotMaker/saveFolderSync";
 
 //APP_VERSION_POINT is to locate the app version in the database file for version bumping
 export let appVer = "166.3.3" //<APP_VERSION_POINT>
