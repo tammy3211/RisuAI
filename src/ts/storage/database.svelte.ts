@@ -620,39 +620,33 @@ export function setDatabase(data:Database){
     }
     changeLanguage(data.language)
 
-    /*
-    // 0번 인덱스 마이그레이션 (Save 폴더 봇용 가상 슬롯 확보)
-    if (data.characters && data.characters.length > 0) {
-        // 0번이 비어있지 않거나(실제 데이터), 가상 슬롯 마커가 없다면 밀어내기
-        // 여기서는 간단히 0번이 '가상 슬롯'인지 확인하는 방법이 없으므로
-        // 항상 0번은 비워두는 정책을 사용.
-        // 단, 매번 실행되면 계속 밀려나므로, 0번이 '빈 캐릭터'가 아니면 밀어내는 식으로 처리
-        const firstChar = data.characters[0];
-        // 이름이 있고 타입이 캐릭터면 실제 데이터로 간주 (빈 캐릭터는 name이 '')
-        if (firstChar && (firstChar.name !== '' || firstChar.type !== 'character')) {
-             console.log('[Database] Migrating index 0 to index 1 for Save Folder Bot slot');
-             data.characters.unshift(createBlankChar());
-        }
-    } else if (!data.characters || data.characters.length === 0) {
-        data.characters = [createBlankChar()];
-    }
-    */
-
-    setDatabaseLite(data)
+    // setDatabaseLite(data)
+    DBState.db = data
 }
 
 export function setDatabaseLite(data:Database){
     if(data.characters){
+        console.log('[setDatabaseLite] Loading characters, length:', data.characters.length);
+        data.characters.forEach((char, idx) => {
+            if (char) {
+                console.log(`  [${idx}] ${char.type === 'group' ? 'Group' : 'Character'}: ${char.name}`);
+            } else {
+                console.log(`  [${idx}] (null/undefined)`);
+            }
+        });
+        
         data.characters = new Proxy(data.characters, {
             get(target, prop, receiver) {
                 if (prop === 'toJSON') {
                     return () => {
                         // JSON.stringify 시 0번 인덱스를 빈 캐릭터로 만든 복사본 반환
                         // 이렇게 하면 DB 파일에 Save 폴더 봇 데이터가 저장되지 않음
+                        console.log('[Proxy toJSON] Creating save copy, original length:', target.length);
                         const copy = [...target];
                         if (copy.length > 0) {
                             copy[0] = createBlankChar();
                         }
+                        console.log('[Proxy toJSON] Save copy length:', copy.length);
                         return copy;
                     }
                 }
@@ -1213,7 +1207,7 @@ export interface customscript{
     type:string
     flag?:string
     ableFlag?:boolean
-
+    __source?:source[]
 }
 
 export type triggerscript = triggerscriptMain
@@ -1239,6 +1233,12 @@ export interface loreBook{
     bookVersion?:number
     id?:string
     folder?:string
+    __source?:source[]
+}
+
+export interface source{
+    key:string
+    path:string
 }
 
 export interface character{

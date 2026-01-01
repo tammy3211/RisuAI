@@ -199,6 +199,17 @@
                 // 4-1. Create copies of item to move and array
                 const newArray = [...currentArray]; // Copy array
                 const updatedMovedItem = { ...movedItem }; // Copy item to move
+                
+                // __source 속성 수동 복사 (non-enumerable 속성이므로 spread로 복사 안 됨)
+                if (movedItem.__source) {
+                    Object.defineProperty(updatedMovedItem, '__source', {
+                        value: movedItem.__source,
+                        writable: true,
+                        enumerable: true,
+                        configurable: true
+                    });
+                }
+                
                 let moveFolder = false;
 
                 // 4-2. Change folder property of copied item

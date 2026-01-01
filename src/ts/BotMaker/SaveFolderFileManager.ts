@@ -59,12 +59,26 @@ async function readJson(folderName: string, filePath: string): Promise<any | nul
   }
 }
 
+function removeSourceKeys(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(v => removeSourceKeys(v));
+  } else if (typeof obj === 'object' && obj !== null) {
+    return Object.fromEntries(
+      Object.entries(obj)
+        .filter(([key]) => key !== '__source' && key !== '__sourcePath')
+        .map(([key, value]) => [key, removeSourceKeys(value)])
+    );
+  }
+  return obj;
+}
+
 /**
  * JSON 파일 쓰기
  */
 async function writeJson(folderName: string, filePath: string, data: any): Promise<boolean> {
-  const cleanedData = removeNulls(data);
-  const content = JSON.stringify(cleanedData, null, 2);
+  const noSource = removeSourceKeys(data);
+  const cleanData = removeNulls(noSource);
+  const content = JSON.stringify(cleanData, null, 2);
   return await writeFile(folderName, filePath, content);
 }
 
@@ -167,6 +181,85 @@ export async function saveCharacterJson(folderName: string, fieldPath: string, v
 }
 
 /**
+ * 객체의 __source 배열을 참고하여 컨테이너 파일의 $ref를 업데이트하고 sourceMap을 갱신합니다.
+ * @param folderName 폴더명
+ * @param itemData __source 속성이 있는 객체 (예: lorebook 아이템)
+ * @param itemPointer 아이템의 전체 포인터 (예: /globalLore/2)
+ * @param sourceMap 소스 맵 (참조로 전달되어 갱신됨)
+ */
+export async function saveRefToContainer(
+  folderName: string,
+  itemData: any,
+  itemPointer: string,
+  sourceMap: Record<string, string>
+): Promise<void> {
+  // __source 배열이 없으면 아무것도 하지 않음
+  if (!itemData || !Array.isArray(itemData.__source) || itemData.__source.length === 0) {
+    return;
+  }
+
+  // 1. 컨테이너 파일 찾기 (위로 탐색)
+  let parentPointer = itemPointer;
+  let containerFile = '';
+
+  while (parentPointer.lastIndexOf('/') > 0) {
+    parentPointer = parentPointer.substring(0, parentPointer.lastIndexOf('/'));
+
+    if (sourceMap[parentPointer] && sourceMap[parentPointer].endsWith('.json')) {
+      containerFile = sourceMap[parentPointer];
+      break;
+    }
+  }
+
+  if (!containerFile) {
+    containerFile = 'character.json';
+    parentPointer = '';
+  }
+
+  // 2. 컨테이너 파일 로드
+  const containerData = await readJson(folderName, containerFile);
+  if (!containerData) {
+    console.error(`[saveRefToContainer] Failed to load container: ${containerFile}`);
+    return;
+  }
+
+  // 3. 기본 상대 경로 계산
+  let baseRelativePath = itemPointer;
+  if (parentPointer.length > 0) {
+    baseRelativePath = itemPointer.substring(parentPointer.length);
+  }
+
+  // 4. Wrapper 타입 감지
+  let wrapperPrefix = '';
+  if (containerData.type === 'risu' && Array.isArray(containerData.data)) {
+    wrapperPrefix = '/data';
+  } else if (containerData.type === 'regex' && Array.isArray(containerData.data)) {
+    wrapperPrefix = '/data';
+  }
+
+  // 5. __source 배열의 각 항목에 대해 $ref 설정
+  for (const sourceEntry of itemData.__source) {
+    const { key, path } = sourceEntry;
+    
+    // 전체 JSON 포인터 계산
+    const fullPointer = `${itemPointer}/${key}`;
+    
+    // 컨테이너 내 상대 경로
+    const relativePath = wrapperPrefix + baseRelativePath + `/${key}`;
+    
+    // $ref 설정
+    setValueByPath(containerData, relativePath, { $ref: path });
+    
+    // sourceMap 갱신
+    sourceMap[fullPointer] = path;
+  }
+
+  // 6. 컨테이너 파일 저장
+  await writeJson(folderName, containerFile, containerData);
+  console.log(`[saveRefToContainer] Updated ${itemData.__source.length} ref(s) in ${containerFile} for ${itemPointer}`);
+}
+
+/**
  * sync.json에 값 저장
  */
 export async function saveToSyncJson(folderName: string, path: string, value: any): Promise<void> {
@@ -247,22 +340,17 @@ export async function saveToSyncJson(folderName: string, path: string, value: an
  * 객체나 배열을 순회하며 null/undefined를 제거하는 함수
  */
 export function removeNulls(obj: any): any {
-  // 1. 배열인 경우: null 걸러내고, 내부 아이템도 재귀적으로 청소
   if (Array.isArray(obj)) {
     return obj
-      .filter(item => item != null) // null 삭제
-      .map(item => removeNulls(item)); // 내부도 확인
+      .map(v => removeNulls(v))
+      .filter(v => v !== null && v !== undefined);
+  } else if (typeof obj === 'object' && obj !== null) {
+    return Object.fromEntries(
+      Object.entries(obj)
+        .map(([k, v]) => [k, removeNulls(v)])
+        .filter(([_, v]) => v !== null && v !== undefined)
+    );
   }
-
-  // 2. 객체인 경우: 속성 하나하나 확인
-  if (typeof obj === 'object' && obj !== null) {
-    for (const key in obj) {
-      obj[key] = removeNulls(obj[key]);
-    }
-    return obj;
-  }
-
-  // 3. 그 외(문자, 숫자 등)는 그냥 반환
   return obj;
 }
 
@@ -347,9 +435,15 @@ export async function writeLorebook(
 
   // 6. 값 설정 및 저장
   if (relativePath === '') {
-    // 상대 경로가 비어있다면 파일 전체를 교체하는 것임 (Wrapper가 아닐 경우)
-    // setValueByPath는 루트 객체 교체를 지원하지 않으므로 바로 저장
-    await writeJson(folderName, filePath, value);
+    // 상대 경로가 비어있다면 파일 전체를 교체하는 것임
+    // 배열이면 Wrapper로 변환
+    let saveValue = value;
+    if (Array.isArray(value)) {
+      const { ensureLoreBookWrapper } = await import('./MockCharacterDB.svelte');
+      saveValue = ensureLoreBookWrapper(value);
+      console.log(`[FileManager] Converted array to Wrapper format`);
+    }
+    await writeJson(folderName, filePath, saveValue);
     console.log(`[FileManager] Saved ${jsonPointer} to ${filePath} (Root Replacement)`);
   } else {
     setValueByPath(externalData, relativePath, value);
@@ -416,7 +510,14 @@ export async function writeCustomScripts(
   // 6. 값 설정 및 저장
   if (relativePath === '') {
     // 상대 경로가 비어있다면 파일 전체를 교체하는 것임
-    await writeJson(folderName, filePath, value);
+    // 배열이면 Wrapper로 변환
+    let saveValue = value;
+    if (Array.isArray(value)) {
+      const { ensureCustomScriptWrapper } = await import('./MockCharacterDB.svelte');
+      saveValue = ensureCustomScriptWrapper(value);
+      console.log(`[FileManager] Converted array to Wrapper format`);
+    }
+    await writeJson(folderName, filePath, saveValue);
     console.log(`[FileManager] Saved ${jsonPointer} to ${filePath} (Root Replacement)`);
   } else {
     setValueByPath(externalData, relativePath, value);

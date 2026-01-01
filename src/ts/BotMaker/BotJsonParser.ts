@@ -38,6 +38,24 @@ async function validateFileContent(folderName: string, jsonData: MockCharacterDB
     }
   }
 
+  // globalLore와 customscript를 Wrapper 형태로 변환 (순수 배열이면 Wrapper로 감싸기)
+  // 단, character.json에는 저장하지 않음 (외부 파일 참조를 유지하기 위해)
+  if (Array.isArray(json.globalLore)) {
+    console.log(`[validateFileContent] globalLore is array (already loaded from external file), converting to wrapper in memory only`);
+    const { ensureLoreBookWrapper } = await import('./MockCharacterDB.svelte');
+    const wrapper = ensureLoreBookWrapper(json.globalLore);
+    json.globalLore = wrapper;
+    // character.json에는 저장하지 않음 - $ref 유지
+  }
+
+  if (Array.isArray(json.customscript)) {
+    console.log(`[validateFileContent] customscript is array (already loaded from external file), converting to wrapper in memory only`);
+    const { ensureCustomScriptWrapper } = await import('./MockCharacterDB.svelte');
+    const wrapper = ensureCustomScriptWrapper(json.customscript);
+    json.customscript = wrapper;
+    // character.json에는 저장하지 않음 - $ref 유지
+  }
+
   // .metadata 에 sync.json과 settings.yaml 검사
   let syncJsonContent = await loadSyncJson(folderName);
   let settingsYamlContent = await loadSettingsYaml(folderName);
@@ -138,13 +156,18 @@ async function recursiveTraverse(
     if (val && typeof val === 'object' && typeof val['$ref'] === 'string') {
       const refPath = val['$ref'];
 
-      // URL 해결 (상대 경로 처리)
-      // currentFileUrl이 /api/save/Bot/character.json 이면 parentDir는 /api/save/Bot/
-      const parentDir = currentFileUrl.substring(0, currentFileUrl.lastIndexOf('/') + 1);
-
-      // 브라우저의 URL API를 사용하여 경로 해결
-      const resolvedUrlObj = new URL(refPath, "http://dummy" + parentDir);
-      const resolvedUrl = resolvedUrlObj.pathname;
+      // URL 해결: 절대/상대 경로 모두 처리
+      let resolvedUrl: string;
+      
+      if (refPath.startsWith('./') || refPath.startsWith('../')) {
+        // 상대 경로 (., ..) - 컨테이너 파일 기준
+        const parentDir = currentFileUrl.substring(0, currentFileUrl.lastIndexOf('/') + 1);
+        const resolvedUrlObj = new URL(refPath, "http://dummy" + parentDir);
+        resolvedUrl = resolvedUrlObj.pathname;
+      } else {
+        // 절대 경로 - 루트 기준
+        resolvedUrl = rootUrl + refPath;
+      }
 
       // SourceMap에 기록할 상대 경로 계산
       // rootUrl: /api/save/Bot/
@@ -154,6 +177,25 @@ async function recursiveTraverse(
       }
 
       sourceMap[nextPointer] = relativePath;
+
+      // 부모 객체에 __source 배열 추가 ($ref 로드 전에)
+      let shouldAddSourceToChild = false;
+      
+      if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+        if (!Array.isArray(obj.__source)) {
+          Object.defineProperty(obj, '__source', {
+            value: [],
+            writable: true,
+            enumerable: true,
+            configurable: true
+          });
+        }
+        obj.__source.push({ key: String(key), path: relativePath });
+      } else if (Array.isArray(obj)) {
+        // 부모가 배열인 경우 (예: globalLore 배열의 요소들)
+        // 로드된 childData에 __source를 추가해야 함
+        shouldAddSourceToChild = true;
+      }
 
       try {
         // 캐시 방지를 위한 타임스탬프 추가
@@ -177,17 +219,26 @@ async function recursiveTraverse(
 
           // globalLore, customscript 특수 처리: Mock 타입이면 먼저 변환 후 재탐색
           if (key === 'globalLore' || key === 'customscript') {
-            let converted;
-            if (key === 'globalLore') {
-              converted = ChangelorebookJSON(childData);
-            } else {
-              converted = ChangecustomscriptJSON(childData);
-            }
-            // 변환된 배열을 재귀 탐색 (이렇게 하면 /globalLore/0/content 형태로 경로 생성)
+            const converted = key === 'globalLore' 
+              ? ChangelorebookJSON(childData)
+              : ChangecustomscriptJSON(childData);
             childData = await recursiveTraverse(converted, nextPointer, resolvedUrl, sourceMap, rootUrl);
           } else {
             // 일반 JSON은 그냥 재귀 탐색
             childData = await recursiveTraverse(childData, nextPointer, resolvedUrl, sourceMap, rootUrl);
+          }
+          
+          // 부모가 배열인 경우, 로드된 childData에 __source 추가
+          if (shouldAddSourceToChild && childData && typeof childData === 'object' && !Array.isArray(childData)) {
+            if (!Array.isArray(childData.__source)) {
+              Object.defineProperty(childData, '__source', {
+                value: [],
+                writable: true,
+                enumerable: true,
+                configurable: true
+              });
+            }
+            childData.__source.push({ key: String(key), path: relativePath });
           }
         } else {
           childData = await res.text();
@@ -273,7 +324,7 @@ export async function parseBotJson(folderName: string): Promise<{ character: cha
 
     // 데이터 변환 및 병합
 
-    // Global Lore 처리
+    // Global Lore 처리 (jsonData.globalLore는 이미 recursiveTraverse에서 배열로 변환됨)
     botJson.globalLore = ChangelorebookJSON(jsonData.globalLore);
 
     // Custom Script 처리

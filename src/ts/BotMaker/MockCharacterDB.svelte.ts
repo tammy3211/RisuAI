@@ -371,3 +371,75 @@ export function DEFAULT_SYNC_DATA() {
     chatPage: 0
   };
 }
+
+/**
+ * 배열을 Wrapper 형태로 변환하는 Proxy 생성
+ * 외부에서는 배열로 사용하지만, 내부적으로는 { type, ver/data } 형태로 저장됨
+ */
+export function createLoreBookWrapper(array: loreBook[]): MockLoreBook {
+  return {
+    type: 'risu',
+    ver: 1,
+    data: array as loreBook[]
+  };
+}
+
+export function createCustomScriptWrapper(array: customscript[]): MockCustomScript {
+  return {
+    type: 'regex',
+    data: array as customscript[]
+  };
+}
+
+/**
+ * Wrapper 형태를 순수 배열로 추출
+ */
+export function extractLoreBookArray(wrapper: loreBook[] | MockLoreBook): loreBook[] {
+  if (Array.isArray(wrapper)) {
+    return wrapper;
+  }
+  if (wrapper && typeof wrapper === 'object' && 'type' in wrapper && wrapper.type === 'risu') {
+    return wrapper.data || [];
+  }
+  return [];
+}
+
+export function extractCustomScriptArray(wrapper: customscript[] | MockCustomScript): customscript[] {
+  if (Array.isArray(wrapper)) {
+    return wrapper;
+  }
+  if (wrapper && typeof wrapper === 'object' && 'type' in wrapper && wrapper.type === 'regex') {
+    return wrapper.data || [];
+  }
+  return [];
+}
+
+/**
+ * 순수 배열을 Wrapper로 변환
+ * 이미 Wrapper면 그대로 반환
+ */
+export function ensureLoreBookWrapper(value: loreBook[] | MockLoreBook | undefined): MockLoreBook {
+  if (!value) {
+    return createLoreBookWrapper([]);
+  }
+  if (Array.isArray(value)) {
+    return createLoreBookWrapper(value);
+  }
+  if (value.type === 'risu') {
+    return value;
+  }
+  return createLoreBookWrapper([]);
+}
+
+export function ensureCustomScriptWrapper(value: customscript[] | MockCustomScript | undefined): MockCustomScript {
+  if (!value) {
+    return createCustomScriptWrapper([]);
+  }
+  if (Array.isArray(value)) {
+    return createCustomScriptWrapper(value);
+  }
+  if (value.type === 'regex') {
+    return value;
+  }
+  return createCustomScriptWrapper([]);
+}
