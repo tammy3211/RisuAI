@@ -135,10 +135,6 @@ export class RisuSaveEncoder {
             name: 'modules'
         });
         for( const character of data.characters) {
-            // 0번 인덱스(Save 폴더 봇)는 저장하지 않음
-            if (data.characters.indexOf(character) === 0) {
-                continue;
-            }
             this.blocks[character.chaId] = await this.encodeBlock({
                 compression,
                 data: JSON.stringify(character),
@@ -167,15 +163,6 @@ export class RisuSaveEncoder {
 
         const savedId = new Set<string>();
         for(const character of data.characters) {
-            // 0번 인덱스(Save 폴더 봇)는 저장하지 않음
-            if (data.characters.indexOf(character) === 0) {
-                // toSave.character에서 제거 (삭제로 인식되지 않도록)
-                const index = toSave.character.indexOf(character.chaId);
-                if (index !== -1) {
-                    toSave.character.splice(index, 1);
-                }
-                continue;
-            }
             const index = toSave.character.indexOf(character.chaId);
             if (index !== -1) {
                 this.blocks[character.chaId] = await this.encodeBlock({
@@ -195,6 +182,15 @@ export class RisuSaveEncoder {
                     name: character.chaId
                 });
                 savedId.add(character.chaId);
+            }
+        }
+        if(toSave.character.length > 0){
+            console.log(`Deleting character data: ${toSave.character.join(', ')}`);
+            //probably deleted characters
+            for(const chaId of toSave.character){
+                if(!savedId.has(chaId)){
+                    delete this.blocks[chaId];
+                }
             }
         }
 
@@ -406,6 +402,14 @@ export class RisuSaveDecoder {
                 case RisuSaveType.CHARACTER_WITH_CHAT:{
                     db.characters ??= [];
                     const character = JSON.parse(this.blocks[key].content);
+                    
+                    // SaveFolderBot 저장용 빈 캐릭터(utilityBot) 필터링
+                    // 0번 슬롯은 SaveFolderBot 전용으로 예약됨
+                    if (character.utilityBot && character.type === 'character' && !character.name) {
+                        console.log('[RisuSave] Skipping empty utilityBot placeholder at index', db.characters.length);
+                        continue;
+                    }
+                    
                     db.characters.push(character);
                     break
                 }

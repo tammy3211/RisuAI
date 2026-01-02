@@ -620,8 +620,8 @@ export function setDatabase(data:Database){
     }
     changeLanguage(data.language)
 
-    // setDatabaseLite(data)
-    DBState.db = data
+    setDatabaseLite(data)
+    // DBState.db = data
 }
 
 export function setDatabaseLite(data:Database){
