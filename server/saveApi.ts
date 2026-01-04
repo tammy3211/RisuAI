@@ -256,6 +256,9 @@ export function createSaveApiHandler(): Connect.NextHandleFunction {
       // POST /api/save/create-from-template - defaultbot 템플릿으로 새 폴더 생성
       if (pathname === '/api/save/create-from-template' && req.method === 'POST') {
         try {
+          // 폴더가 없으면 생성
+          await fs.ensureDir("save");
+
           // 1. 기존 폴더 목록 조회
           const folders = await fs.readdir(SAVE_DIR);
           const botFolders = [];

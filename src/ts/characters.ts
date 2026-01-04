@@ -1,6 +1,6 @@
 import { get, writable } from "svelte/store";
 import { saveImage, setDatabase, type character, type Chat, defaultSdDataFunc, type loreBook, getDatabase, getCharacterByIndex, setCharacterByIndex } from "./storage/database.svelte";
-import { alertAddCharacter, alertConfirm, alertError, alertNormal, alertSelect, alertStore, alertWait } from "./alert";
+import { alertAddCharacter, alertConfirm, alertError, alertNormal, alertSelect, alertStore, alertWait, alertNormalWait } from "./alert";
 import { language } from "../lang";
 import { checkNullish, findCharacterbyId, getUserName, selectMultipleFile, selectSingleFile } from "./util";
 import { v4 as uuidv4, v4 } from 'uuid';
@@ -877,7 +877,9 @@ export async function addCharacter(arg:{
             const { createdefaultbot } = await import('./BotMaker/BotJsonParser');
             await createdefaultbot();
             // Save Folder Bot 리스트 새로고침 필요
-            alertNormal('Save Folder Bot created successfully! Please refresh the page.');
+            alertNormalWait('Save Folder Bot created successfully! Please refresh the page.').then(() => {
+                location.reload()
+            })
             break
         default:
             MobileGUIStack.set(1)

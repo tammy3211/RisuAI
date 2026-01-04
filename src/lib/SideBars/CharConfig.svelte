@@ -733,9 +733,11 @@
         }} className="mt-2">{language.exportCharacter}</Button>
     {/if}
 
-    <Button onclick={async () => {
-        removeChar($selectedCharID, DBState.db.characters[$selectedCharID].name)
-    }} className="mt-2" size="sm">{ DBState.db.characters[$selectedCharID].type === 'group' ? language.removeGroup : language.removeCharacter}</Button>
+    {#if $selectedCharID !== 0}
+        <Button onclick={async () => {
+            removeChar($selectedCharID, DBState.db.characters[$selectedCharID].name)
+        }} className="mt-2" size="sm">{ DBState.db.characters[$selectedCharID].type === 'group' ? language.removeGroup : language.removeCharacter}</Button>
+    {/if}
     
 {:else if $CharConfigSubMenu === 5}
     {#if DBState.db.characters[$selectedCharID].type === 'character'}
