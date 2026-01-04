@@ -3,7 +3,7 @@
     import Suggestion from './Suggestion.svelte';
     import AdvancedChatEditor from './AdvancedChatEditor.svelte';
     import { CameraIcon, DatabaseIcon, DicesIcon, GlobeIcon, ImagePlusIcon, LanguagesIcon, Laugh, MenuIcon, MicOffIcon, PackageIcon, Plus, RefreshCcwIcon, ReplyIcon, Send, StepForwardIcon, XIcon, BrainIcon, ArrowDown } from "@lucide/svelte";
-    import { selectedCharID, PlaygroundStore, createSimpleCharacter, hypaV3ModalOpen, ScrollToMessageStore } from "../../ts/stores.svelte";
+    import { selectedCharID, PlaygroundStore, createSimpleCharacter, hypaV3ModalOpen, ScrollToMessageStore, additionalChatMenu, additionalFloatingActionButtons } from "../../ts/stores.svelte";
     import { tick } from 'svelte';
     import Chat from "./Chat.svelte";
     import { type Message } from "../../ts/storage/database.svelte";
@@ -32,6 +32,14 @@
     import { coldStorageHeader, preLoadChat } from 'src/ts/process/coldstorage.svelte';
     import Chats from './Chats.svelte';
     import Button from '../UI/GUI/Button.svelte';
+    import PluginDefinedIcon from '../Others/PluginDefinedIcon.svelte';
+
+    
+    interface Props {
+        openModuleList?: boolean;
+        openChatList?: boolean;
+        customStyle?: string;
+    }
 
     let messageInput:string = $state('')
     let messageInputTranslate:string = $state('')
@@ -47,12 +55,13 @@
     let showNewMessageButton = $state(false)
     let chatsInstance: any = $state()
     let isScrollingToMessage = $state(false)
-
+    let { openModuleList = $bindable(false), openChatList = $bindable(false), customStyle = '' }: Props = $props();
     let currentCharacter = $derived(DBState.db.characters[$selectedCharID])
     let currentChat = $derived(currentCharacter?.chats[currentCharacter.chatPage]?.message ?? [])
 
     function scrollToBottom() {
         chatsInstance?.scrollToLatestMessage();
+    }
     $effect(() => {
         if(ScrollToMessageStore.value !== -1){
             const index = ScrollToMessageStore.value
@@ -340,12 +349,6 @@
         }
     }
 
-    interface Props {
-        openModuleList?: boolean;
-        openChatList?: boolean;
-        customStyle?: string;
-    }
-
     let { userIconPortrait, currentUsername, userIcon } = $derived.by(() => {
         const bindedPersona = DBState?.db?.characters?.[$selectedCharID]?.chats?.[DBState?.db?.characters?.[$selectedCharID]?.chatPage]?.bindedPersona
 
@@ -368,7 +371,6 @@
         }
     })
 
-    let { openModuleList = $bindable(false), openChatList = $bindable(false), customStyle = '' }: Props = $props();
     let inputHeight = $state("44px")
     let inputEle:HTMLTextAreaElement = $state()
     let inputTranslateHeight = $state("44px")
@@ -499,6 +501,8 @@
             alertError("Error while taking screenshot")
         }
     }
+
+    
 </script>
 
 
@@ -929,6 +933,17 @@
                         </div>
                     {/if}
 
+                    {#each additionalChatMenu as menu}
+                        <div class="mt-2"></div>
+                        <div class="flex items-center cursor-pointer hover:text-green-500 transition-colors" onclick={() => {
+                            menu.callback()
+                            openMenu = false
+                        }}>
+                            <PluginDefinedIcon ico={menu} />
+                            <span class="ml-2">{menu.name}</span>
+                        </div>
+                    {/each}
+
                     {#if DBState.db.showMenuHypaMemoryModal}
                         {#if (DBState.db.supaModelType !== 'none' && DBState.db.hypav2) || DBState.db.hypaV3}
                             <div class="flex items-center cursor-pointer hover:text-green-500 transition-colors" onclick={() => {
@@ -1019,6 +1034,18 @@
 
     {/if}
 </div>
+
+{#if additionalFloatingActionButtons.length > 0}
+    <div class="fixed top-4 right-4 flex flex-col gap-3 z-50">
+        {#each additionalFloatingActionButtons as button}
+            <button class="bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 hover:bg-blue-600 transition-colors" onclick={() => {
+                button.callback()
+            }}>
+                <PluginDefinedIcon ico={button} />
+            </button>
+        {/each}
+    </div>
+{/if}
 <style>
 
     .chat-process-stage-1{

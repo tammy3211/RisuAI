@@ -1109,7 +1109,7 @@ interface RisuaiPluginAPI {
 
     /**
      * Gets the database with limited access
-     * @returns DatabaseSubset object (limited to allowed keys)
+     * @returns DatabaseSubset object (limited to allowed keys) or null if consent not given
      *
      * Allowed keys: characters, modules, enabledModules, moduleIntergration,
      * pluginV2, personas, plugins, pluginCustomStorage, temperature, askRemoval,
@@ -1120,10 +1120,12 @@ interface RisuaiPluginAPI {
      * @example
      * ```typescript
      * const db = await risuai.getDatabase();
-     * console.log(db.characters);
+     * if(db) {
+     *   console.log(db.characters);
+     * }
      * ```
      */
-    getDatabase(): Promise<DatabaseSubset>;
+    getDatabase(): Promise<DatabaseSubset|null>;
 
     /**
      * Sets the database (lightweight save)
@@ -1218,7 +1220,7 @@ interface RisuaiPluginAPI {
      * await risuai.addProvider(
      *   'MyProvider',
      *   async (args, abortSignal) => {
-     *     const response = await risuai.risuFetch('https://api.example.com/chat', {
+     *     const response = await risuai.nativeFetch('https://api.example.com/chat', {
      *       method: 'POST',
      *       body: JSON.stringify({
      *         messages: args.prompt_chat,
@@ -1350,12 +1352,18 @@ interface RisuaiPluginAPI {
      */
     onUnload(func: () => void | Promise<void>): Promise<void>;
 
-    // ========== Internal Methods ==========
-
     /**
-     * @internal Gets old API keys (for debugging/compatibility)
-     */
-    _getOldKeys(): Promise<string[]>;
+     * Gets the fetch logs
+     * @returns Array of fetch log entries or null if consent not given
+    */
+    getFetchLogs(): Promise<{
+        url: string;
+        body: string;
+        status?: number;
+        response?: string;
+        error?: string;
+        timestamp: number;
+    }[]|null>;
 }
 
 // ============================================================================

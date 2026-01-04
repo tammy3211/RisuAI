@@ -10,7 +10,10 @@
     OpenRealmStore,
     PlaygroundStore,
 
-    QuickSettings
+    QuickSettings,
+
+    additionalHamburgerMenu
+
 
   } from "../../ts/stores.svelte";
     import { setDatabase, type folder, type character } from "../../ts/storage/database.svelte";
@@ -48,11 +51,10 @@
   import { sideBarSize } from "src/ts/gui/guisize";
   import DevTool from "./DevTool.svelte";
     import QuickSettingsGui from "../Others/QuickSettingsGUI.svelte";
+    import PluginDefinedIcon from "../Others/PluginDefinedIcon.svelte";
   import { loadSaveFolderBots, type SaveFolderBot } from "../../ts/BotMaker/saveFolderLoader.svelte";
-  import { isTauri } from "src/ts/globalApi.svelte";
   import { parseBotJson } from "../../ts/BotMaker/BotJsonParser";
   import { currentSaveFolderBot } from "../../ts/BotMaker/saveFolderSync";
-  
   let sideBarMode = $state(0);
   let editMode = $state(false);
   let menuMode = $state(0);
@@ -140,7 +142,6 @@
   $effect(() => {
     loadSaveFolderBots().then(bots => {
       console.log('[SaveFolder] Loaded bots:', bots)
-      console.log('[SaveFolder] isTauri:', isTauri)
       saveFolderBots = bots
     })
   })
@@ -439,6 +440,17 @@
           PlaygroundStore.set(1)
         }}
       ><ShellIcon /></BarIcon>
+      {#each additionalHamburgerMenu as menu}
+        <div class="mt-2"></div>
+        <BarIcon
+          onClick={() => {
+            reseter();
+            menu.callback();
+          }}>
+            <PluginDefinedIcon ico={menu} />
+          </BarIcon
+        >
+      {/each}
       <div class="mt-2"></div>
       <BarIcon
         onClick={() => {

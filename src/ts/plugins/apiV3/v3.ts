@@ -1,4 +1,4 @@
-import { getV2PluginAPIs, type RisuPlugin } from "../plugins";
+import { allowedDbKeys, getV2PluginAPIs, type RisuPlugin } from "../plugins";
 import { SandboxHost } from "./factory";
 import { getDatabase } from "src/ts/storage/database.svelte";
 import { tagWhitelist } from "../pluginSafeClass";
@@ -6,8 +6,9 @@ import DOMPurify from 'dompurify';
 import { additionalChatMenu, additionalFloatingActionButtons, additionalHamburgerMenu, additionalSettingsMenu, type MenuDef } from "src/ts/stores.svelte";
 import { v4 } from "uuid";
 import { sleep } from "src/ts/util";
-import { alertConfirm } from "src/ts/alert";
+import { alertConfirm, alertError, alertNormal } from "src/ts/alert";
 import { language } from "src/lang";
+import { getFetchLogs } from "src/ts/globalApi.svelte";
 
 /*
     V3 API for RisuAI Plugins
@@ -459,6 +460,25 @@ const unloadV3Plugin = async (pluginName: string) => {
     instance.host.terminate();
 }
 
+const permissionGivenPlugins: Set<string> = new Set();
+
+const checkPluginPermission = async (pluginName: string, permissionDesc: 'fetchLogs'|'db'|'mainDom') => {
+    if(permissionGivenPlugins.has(pluginName)){
+        return true;
+    }
+    let alertTitle =
+        permissionDesc === 'fetchLogs' ? language.fetchLogConsent.replace("{}", pluginName)
+        : permissionDesc === 'db' ? language.getFullDatabaseConsent.replace("{}", pluginName)
+        : permissionDesc === 'mainDom' ? language.mainDomAccessConsent.replace("{}", pluginName)
+        : `Error`
+    const conf = await alertConfirm(alertTitle)
+    if(conf){
+        permissionGivenPlugins.add(pluginName);
+        return true;
+    }
+    return false;
+}
+
 const makeRisuaiAPIV3 = (iframe:HTMLIFrameElement,plugin:RisuPlugin) => {
 
     const oldApis = getV2PluginAPIs();
@@ -474,16 +494,28 @@ const makeRisuaiAPIV3 = (iframe:HTMLIFrameElement,plugin:RisuPlugin) => {
         removeRisuScriptHandler: oldApis.removeRisuScriptHandler,
         addRisuReplacer: oldApis.addRisuReplacer,
         removeRisuReplacer: oldApis.removeRisuReplacer,
-        getDatabase: oldApis.getDatabase,
         setDatabaseLite: oldApis.setDatabaseLite,
         setDatabase: oldApis.setDatabase,
         loadPlugins: oldApis.loadPlugins,
         readImage: oldApis.readImage,
         saveAsset: oldApis.saveAsset,
+
+        //Same functionality, but new implementation
+        getDatabase: async () => {
+            const conf = await checkPluginPermission(plugin.name, 'db');
+            if(!conf){
+                return null;
+            }
+            const db = getDatabase();
+            let liteDB = {}
+            for(const key of allowedDbKeys){
+                (liteDB as any)[key] = (db as any)[key];
+            }
+            return liteDB;
+        },
+
         
         //Deprecated APIs from v2.1
-
-
         //Use getArgument / setArgument instead if possible
         getArg: oldApis.getArg,
         setArg: oldApis.setArg,
@@ -541,7 +573,11 @@ const makeRisuaiAPIV3 = (iframe:HTMLIFrameElement,plugin:RisuPlugin) => {
         hideContainer: () => {
             iframe.style.display = "none";
         },
-        getRootDocument: () => {
+        getRootDocument: async () => {
+            const conf = await checkPluginPermission(plugin.name, 'mainDom');
+            if(!conf){
+                return null;
+            }
             return new SafeDocument(document);
         },
         registerSetting: (
@@ -638,6 +674,32 @@ const makeRisuaiAPIV3 = (iframe:HTMLIFrameElement,plugin:RisuPlugin) => {
         onUnload: (callback: () => void) => {
             addPluginUnloadCallback(plugin.name, callback);
         },
+        getFetchLogs: async () => {
+            const unsafeFetchLog = getFetchLogs()
+            const conf = await checkPluginPermission(plugin.name, 'fetchLogs');
+            if(!conf){
+                return null;
+            }
+            return unsafeFetchLog.map(log => {
+                return {
+                    url: log.url,
+                    body: log.body,
+                    status: log.status,
+                    response: log.response,
+                }
+            })
+        },
+
+        alert: (msg:string) => {
+            return alertNormal(msg)
+        },
+        alertConfirm: (msg:string) => {
+            return alertConfirm(msg)
+        },
+        alertError: (msg:string) => {
+            return alertError(msg)
+        },
+        //Internal use APIs
         _getOldKeys: () => {
             return Object.keys(oldApis)
         },

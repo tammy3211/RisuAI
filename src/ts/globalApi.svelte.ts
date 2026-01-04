@@ -392,7 +392,7 @@ export async function saveDb() {
         channel = new BroadcastChannel('risu-db')
     }
     if (channel) {
-        channel.onmessage = async (ev) => {
+        channel.onmessage = (ev) => {
             if (ev.data === sessionID) {
                 return
             }
@@ -611,7 +611,7 @@ export function setUsingSw(value: boolean) {
  * @param {string} id - The chat ID to search for in the fetch log.
  * @returns {fetchLog | null} - The fetch log entry if found, otherwise null.
  */
-export async function getFetchData(id: string) {
+export function getFetchData(id: string) {
     for (const log of fetchLog) {
         if (log.chatId === id) {
             return log;
@@ -1359,14 +1359,14 @@ export class VirtualWriter {
      * 
      * @param {Uint8Array} data - The data to write.
      */
-    async write(data: Uint8Array): Promise<void> {
+    write(data: Uint8Array): void {
         this.buf.append(data)
     }
 
     /**
      * Closes the writer. (No operation for VirtualWriter)
      */
-    async close(): Promise<void> {
+    close(): void {
         // do nothing
     }
 }
@@ -1566,41 +1566,15 @@ export class AppendableBuffer {
  * @returns {ReadableStream<Uint8Array>} - The new readable stream.
  */
 const pipeFetchLog = (fetchLogIndex: number, readableStream: ReadableStream<Uint8Array>) => {
-    let textDecoderBuffer = new AppendableBuffer()
-    let textDecoderPointer = 0
-    const textDecoder = TextDecoderStream ? (new TextDecoderStream()) : new TransformStream<Uint8Array, string>({
-        transform(chunk, controller) {
-            try {
-                textDecoderBuffer.append(chunk)
-                const decoded = new TextDecoder('utf-8', {
-                    fatal: true
-                }).decode(textDecoderBuffer.buffer)
-                let newString = decoded.slice(textDecoderPointer)
-                textDecoderPointer = decoded.length
-                controller.enqueue(newString)
-            } catch { }
-        }
-    })
-    textDecoder.readable.pipeTo(new WritableStream({
-        write(chunk) {
-            fetchLog[fetchLogIndex].response += chunk
-        }
-    }))
-    const writer = textDecoder.writable.getWriter()
-    return new ReadableStream<Uint8Array>({
-        start(controller) {
-            readableStream.pipeTo(new WritableStream({
-                write(chunk) {
-                    controller.enqueue(chunk)
-                    writer.write(chunk as any)
-                },
-                close() {
-                    controller.close()
-                    writer.close()
-                }
-            }))
-        }
-    })
+    
+    const splited = readableStream.tee();
+    
+    (async () => {
+        const text = await (new Response(splited[0])).text()
+        fetchLog[fetchLogIndex].response = text
+    })()
+    
+    return splited[1]
 }
 
 /**
@@ -1916,7 +1890,7 @@ export async function loadInternalBackup() {
         await decodeRisuSave(Buffer.from(data) as unknown as Uint8Array)
     )
 
-    await alertNormal('Loaded backup')
+    alertNormal('Loaded backup')
 
 
 

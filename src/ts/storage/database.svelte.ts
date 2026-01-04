@@ -618,6 +618,8 @@ export function setDatabase(data:Database){
     data.autoScrollToNewMessage ??= true
     data.alwaysScrollToNewMessage ??= false
     data.newMessageButtonStyle ??= 'bottom-center'
+    data.echoMessage ??= "Echo Message"
+    data.echoDelay ??= 0
     if(!isNodeServer && !isTauri){
         //this is intended to forcely reduce the size of the database in web
         data.promptInfoInsideChat = false
@@ -1183,12 +1185,15 @@ export interface Database{
     ImagenPersonGeneration:string,
     sourcemapTranslate:boolean
     settingsCloseButtonSize:number
+    promptDiffPrefs:PromptDiffPrefs
     enableBookmark?: boolean
     hideAllImages?: boolean
     autoScrollToNewMessage?: boolean
     alwaysScrollToNewMessage?: boolean
     newMessageButtonStyle?: string
     pluginDevelopMode?: boolean
+    echoMessage?:string
+    echoDelay?:number
 }
 
 interface SeparateParameters{
@@ -1760,6 +1765,15 @@ export interface MessagePresetInfo{
     promptText?: OpenAIChat[],
 }
 
+export interface PromptDiffPrefs {
+    diffStyle: 'line' | 'intraline'
+    formatStyle: 'raw' | 'card'
+    viewStyle: 'unified' | 'split'
+    isGrouped: boolean
+    showOnlyChanges: boolean
+    contextRadius: number
+}
+
 interface AINsettings{
     top_p: number,
     rep_pen: number,
@@ -2256,7 +2270,7 @@ export async function importPreset(f:{
         pr.PresensePenalty = (pre.presence_penalty * 0.7) * 100
         pr.top_p = pre.top_p ?? 1
 
-        for(const prompt of pre?.prompt_order?.[0]?.order){
+        for(const prompt of pre.prompt_order[0].order){
             if(!prompt?.enabled){
                 continue
             }

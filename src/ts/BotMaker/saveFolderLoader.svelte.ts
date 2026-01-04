@@ -1,4 +1,4 @@
-import { isTauri } from "../globalApi.svelte"
+import { isTauri } from "src/ts/platform"
 
 export interface SaveFolderBot {
   folderName: string

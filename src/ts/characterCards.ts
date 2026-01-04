@@ -1151,7 +1151,7 @@ function convertCharbook(arg:{
 
 
 
-async function createBaseV2(char:character) {
+function createBaseV2(char:character) {
     
     let charBook:charBookEntry[] = []
     for(const lore of char.globalLore){
@@ -1688,7 +1688,7 @@ export async function shareRisuHub2(char:character, arg:{
             tagList.push("nsfw")
         }
     
-        await alertWait("Uploading...")
+        alertWait("Uploading...")
         
     
         let tags = tagList.filter((v, i) => {
