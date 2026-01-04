@@ -1194,6 +1194,7 @@ export interface Database{
     pluginDevelopMode?: boolean
     echoMessage?:string
     echoDelay?:number
+    disableHTMLrendering?:boolean
 }
 
 interface SeparateParameters{

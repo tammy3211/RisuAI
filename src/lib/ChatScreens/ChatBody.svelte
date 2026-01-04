@@ -251,8 +251,16 @@
     })
 </script>
 
-{#await markParsingResult}
-    {@html addMetadataToElement(trimMarkdown(lastParsed), modelShortName)}
-{:then md}
-    {@html addMetadataToElement(trimMarkdown(md), modelShortName)}
-{/await}
+{#if DBState.db.disableHTMLrendering}
+    {#await markParsingResult}
+        {addMetadataToElement(trimMarkdown(lastParsed), modelShortName)}
+    {:then md}
+        {addMetadataToElement(trimMarkdown(md), modelShortName)}
+    {/await}
+{:else}
+    {#await markParsingResult}
+        {@html addMetadataToElement(trimMarkdown(lastParsed), modelShortName)}
+    {:then md}
+        {@html addMetadataToElement(trimMarkdown(md), modelShortName)}
+    {/await}
+{/if}

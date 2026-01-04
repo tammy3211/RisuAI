@@ -91,6 +91,9 @@
                 <CheckInput bind:check={chara.supaMemory} reverse name={DBState.db.hypaV3 ? language.ToggleHypaMemory : DBState.db.hanuraiEnable ? language.hanuraiMemory : DBState.db.hypaMemory ? language.ToggleHypaMemory : language.ToggleSuperMemory}/>
             </div>
         {/if}
+        <div class="flex mt-2 items-center w-full" class:justify-end={$MobileGUI}>
+            <CheckInput bind:check={DBState.db.disableHTMLrendering} name="disable HTML rendering" reverse />
+        </div>
     </div>
 {:else}
     <div class="flex mt-2 items-center">
@@ -102,4 +105,7 @@
             <CheckInput bind:check={chara.supaMemory} name={DBState.db.hypaV3 ? language.ToggleHypaMemory : DBState.db.hanuraiEnable ? language.hanuraiMemory : DBState.db.hypaMemory ? language.ToggleHypaMemory : language.ToggleSuperMemory}/>
         </div>
     {/if}
+    <div class="flex mt-2 items-center">
+        <CheckInput bind:check={DBState.db.disableHTMLrendering} name="disable HTML rendering" />
+    </div>
 {/if}
