@@ -14,6 +14,7 @@ import type { OobaChatCompletionRequestParams } from '../model/ooba';
 import { type HypaV3Settings, type HypaV3Preset, createHypaV3Preset } from '../process/memory/hypav3'
 import { createBlankChar } from '../characters';
 import { currentSaveFolderBot } from "../BotMaker/saveFolderSync";
+import { isTauri, isNodeServer } from "src/ts/platform"
 
 //APP_VERSION_POINT is to locate the app version in the database file for version bumping
 export let appVer = "166.3.3" //<APP_VERSION_POINT>
@@ -609,12 +610,15 @@ export function setDatabase(data:Database){
     data.streamGeminiThoughts ??= false
     data.sourcemapTranslate ??= false
     data.settingsCloseButtonSize ??= 24
+    data.hideAllImages ??= false
     data.ImagenModel ??= 'imagen-4.0-generate-001'
     data.ImagenImageSize ??= '1K'
     data.ImagenAspectRatio ??= '1:1'
     data.ImagenPersonGeneration ??= 'allow_all'
-    //@ts-expect-error __TAURI_INTERNALS__ is injected by Tauri runtime, not defined in Window interface
-    if(!globalThis.__NODE__ && !window.__TAURI_INTERNALS__){
+    data.autoScrollToNewMessage ??= true
+    data.alwaysScrollToNewMessage ??= false
+    data.newMessageButtonStyle ??= 'bottom-center'
+    if(!isNodeServer && !isTauri){
         //this is intended to forcely reduce the size of the database in web
         data.promptInfoInsideChat = false
     }
@@ -1180,6 +1184,10 @@ export interface Database{
     sourcemapTranslate:boolean
     settingsCloseButtonSize:number
     enableBookmark?: boolean
+    hideAllImages?: boolean
+    autoScrollToNewMessage?: boolean
+    alwaysScrollToNewMessage?: boolean
+    newMessageButtonStyle?: string
     pluginDevelopMode?: boolean
 }
 
