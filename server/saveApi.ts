@@ -207,7 +207,7 @@ export function createSaveApiHandler(): Connect.NextHandleFunction {
         return;
       }
 
-      // POST /api/save/:folderName/file/* - 임의 파일 쓰기
+      // POST /api/save/:folderName/file/* - 임의 파일 쓰기 (텍스트/바이너리 모두 지원)
       if (fileMatch && req.method === 'POST') {
         const folderName = decodeURIComponent(fileMatch[1]);
         const filePath = decodeURIComponent(fileMatch[2]);
@@ -223,15 +223,25 @@ export function createSaveApiHandler(): Connect.NextHandleFunction {
         // 폴더가 없으면 생성
         await fs.ensureDir(path.dirname(fullPath));
 
-        // Body 읽기
+        // Body 읽기 (바이너리로)
         const chunks = [];
         for await (const chunk of req) {
           chunks.push(chunk);
         }
-        const body = Buffer.concat(chunks).toString();
+        const body = Buffer.concat(chunks);
 
-        await fs.writeFile(fullPath, body, 'utf-8');
-        console.log('[SaveAPI] Saved file:', fullPath);
+        // Content-Type 확인하여 텍스트/바이너리 판단
+        const contentType = req.headers['content-type'] || '';
+        
+        if (contentType.includes('text/') || contentType.includes('application/json')) {
+          // 텍스트로 저장
+          await fs.writeFile(fullPath, body.toString('utf-8'), 'utf-8');
+        } else {
+          // 바이너리로 저장
+          await fs.writeFile(fullPath, body);
+        }
+        
+        console.log('[SaveAPI] Saved file:', fullPath, 'size:', body.length, 'bytes');
         
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ success: true }));

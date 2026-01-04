@@ -139,6 +139,20 @@ export async function getFileSrc(loc: string) {
     if (loc.startsWith('/api/save/')) return loc;
     if (loc.startsWith('http') || loc.startsWith('blob:') || loc.startsWith('data:')) return loc;
 
+    const { selectedCharID } = await import('./stores.svelte');
+    const charId = get(selectedCharID);
+
+    if (charId === 0) {
+        const { currentSaveFolderBot } = await import('./BotMaker/saveFolderSync');
+        const current = get(currentSaveFolderBot);
+
+        if (current) {
+            const folderName = current.folderName;
+            const path = `/api/save/${folderName}/file/${loc}`;
+            return path;
+        }
+    }
+
     if (isTauri) {
         if (loc.startsWith('assets')) {
             if (appDataDirPath === '') {
@@ -246,6 +260,19 @@ let appDataDirPath = ''
  * @returns {Promise<Uint8Array>} - A promise that resolves to the data of the image file.
  */
 export async function readImage(data: string) {
+    const { selectedCharID } = await import('./stores.svelte');
+    const charId = get(selectedCharID);
+
+    if (charId === 0) {
+        const { currentSaveFolderBot } = await import('./BotMaker/saveFolderSync');
+        const current = get(currentSaveFolderBot);
+
+        if (current) {
+            const { loadAssetFromFolder } = await import('./BotMaker/SaveFolderFileManager');
+            return await loadAssetFromFolder(current.folderName, data) as unknown as Uint8Array;
+        }
+    }
+
     if (isTauri) {
         if (data.startsWith('assets')) {
             if (appDataDirPath === '') {
@@ -265,10 +292,40 @@ export async function readImage(data: string) {
  * 
  * @param {Uint8Array} data - The data of the asset file.
  * @param {string} [customId=''] - The custom ID for the asset file.
- * @param {string} [fileName=''] - The name of the asset file.
+ * @param {string} [Extension=''] - The name of the asset file.
  * @returns {Promise<string>} - A promise that resolves to the path of the saved asset file.
  */
-export async function saveAsset(data: Uint8Array, customId: string = '', fileName: string = '') {
+export async function saveAsset(data: Uint8Array, customId: string = '', Extension: string = '', Name?: string, type?: "other" | "icon" | "emotions"): Promise<string> {
+    // Save Folder Bot (char[0]) 체크
+    const { selectedCharID } = await import('./stores.svelte');
+    const charId = get(selectedCharID);
+    
+    console.log('Saving asset for char ID:', charId, 'with Name:', Name, 'and fileName:', Extension);
+    if (charId === 0) {
+        // char[0]이면 Save Folder에 저장
+        const { currentSaveFolderBot } = await import('./BotMaker/saveFolderSync');
+        const current = get(currentSaveFolderBot);
+        
+        console.log('Current Save Folder Bot:', current.folderName);
+
+        let assettype: "other" | "icon" | "emotions" = "other"; // 기본값 설정
+        if (type) {
+            assettype = type;
+        }
+
+        if (current) {
+            const { saveAssetToFolder } = await import('./BotMaker/SaveFolderFileManager');
+            return await saveAssetToFolder(
+                current.folderName,
+                assettype,
+                data,
+                Name ? Name : customId,
+                Extension
+            );
+        }
+    }
+    
+    // 일반 캐릭터: 원본 로직 (localforage)
     let id = ''
     if (customId !== '') {
         id = customId
@@ -281,8 +338,8 @@ export async function saveAsset(data: Uint8Array, customId: string = '', fileNam
         }
     }
     let fileExtension: string = 'png'
-    if (fileName && fileName.split('.').length > 0) {
-        fileExtension = fileName.split('.').pop()
+    if (Extension && Extension.split('.').length > 0) {
+        fileExtension = Extension.split('.').pop()
     }
     if (isTauri) {
         await writeFile(`assets/${id}.${fileExtension}`, data, {

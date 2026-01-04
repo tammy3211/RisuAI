@@ -119,7 +119,7 @@ export async function selectCharImg(charIndex:number) {
 
 
 
-    const imgp = await saveImage(img)
+    const imgp = await saveImage(img, '', '', selected.name, "icon")
     dumpCharImage(charIndex)
     db.characters[charIndex].image = imgp
     setDatabase(db)
@@ -167,7 +167,7 @@ export async function addCharEmotion(charId:number) {
     let db = getDatabase()
     for(const f of selected){
         const img = f.data
-        const imgp = await saveImage(img)
+        const imgp = await saveImage(img, '', '', f.name, "emotions")
         const name = f.name.replace('.png','').replace('.webp','')
         let dbChar = db.characters[charId]
         if(dbChar.type !== 'group'){
@@ -857,6 +857,8 @@ export async function addCharacter(arg:{
             break
         case 'importCharacter':
             await importCharacter()
+            break
+        case 'createfolderbot':
             break
         default:
             MobileGUIStack.set(1)

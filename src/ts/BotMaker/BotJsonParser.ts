@@ -343,19 +343,6 @@ export async function parseBotJson(folderName: string): Promise<{ character: cha
     const parsedJson = await loadSyncJson(folderName);
     mergeSyncToCharacter(botJson, parsedJson);
 
-    // Asset Path 변환 함수
-    const convertAssetUrl = (path: string) => {
-      if (!path) return path;
-      if (path.startsWith('http') || path.startsWith('blob:') || path.startsWith('data:')) return path;
-      return `/api/save/${folderName}/file/${path}`;
-    };
-
-    // Asset URL 변환 (한 번에 처리)
-    if (botJson.image) botJson.image = convertAssetUrl(botJson.image);
-    if (botJson.emotionImages) botJson.emotionImages = botJson.emotionImages.map(([name, path]) => [name, convertAssetUrl(path)]);
-    if (botJson.additionalAssets) botJson.additionalAssets = botJson.additionalAssets.map(([name, path, ext]) => [name, convertAssetUrl(path), ext]);
-    if (botJson.ccAssets) botJson.ccAssets = botJson.ccAssets.map(item => ({ ...item, uri: convertAssetUrl(item.uri) }));
-
     // 파일 유효성 검사 및 수정
     await validateFileContent(folderName, jsonData, sourceMap);
 

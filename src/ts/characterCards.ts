@@ -33,6 +33,8 @@ export async function importCharacter() {
         const files = await selectFileByDom(["*"], 'multiple')
         if(!files){
             return
+        } else {
+            selectedCharID.set(-1)
         }
 
         for(const f of files){

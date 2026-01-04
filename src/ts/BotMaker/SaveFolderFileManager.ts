@@ -1,7 +1,58 @@
 import pointer from 'json-pointer';
+import { v4 } from 'uuid';
+import { hasher } from '../parser.svelte';
 /**
  * Save Folder 파일 읽기/쓰기 유틸리티
  */
+
+/**
+ * 바이너리 파일 쓰기
+ */
+export async function writeBinary(folderName: string, filePath: string, data: Uint8Array | ArrayBuffer): Promise<boolean> {
+  const url = `/api/save/${folderName}/file/${filePath}`;
+
+  try {
+    // Uint8Array로 통일하여 타입 호환성 보장
+    const uint8Array = data instanceof Uint8Array ? data : new Uint8Array(data);
+    const blob = new Blob([uint8Array as BlobPart], { type: 'application/octet-stream' });
+    
+    const res = await fetch(url, {
+      method: 'POST',
+      body: blob
+    });
+
+    if (!res.ok) {
+      console.error(`[FileManager] Failed to write binary ${filePath}: ${res.status}`);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error(`[FileManager] Error writing binary ${filePath}:`, error);
+    return false;
+  }
+}
+
+/**
+ * 바이너리 파일 읽기
+ */
+export async function readBinary(folderName: string, filePath: string): Promise<Uint8Array | null> {
+  // 캐시 방지를 위한 타임스탬프 추가
+  const timestamp = Date.now();
+  const url = `/api/save/${folderName}/file/${filePath}?t=${timestamp}`;
+
+  try {
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      return null;
+    }
+    const arrayBuffer = await res.arrayBuffer();
+    return new Uint8Array(arrayBuffer);
+  } catch (error) {
+    console.error(`[FileManager] Error reading binary ${filePath}:`, error);
+    return null;
+  }
+}
 
 /**
  * 파일 읽기 (텍스트)
@@ -527,9 +578,63 @@ export async function writeCustomScripts(
 }
 
 /**
- * 에셋 저장/삭제
+ * 에셋 저장
+ * @param folderName 폴더명
+ * @param assetType 에셋 타입 (icon, emotions, other)
+ * @param data 바이너리 데이터
+ * @param fileName 파일명
+ * @returns 저장된 파일의 상대 경로
  */
-export async function saveAsset(folderName: string, assetPath: string, data: ArrayBuffer) {
-  // 에셋 저장 로직 (필요 시 구현)
-  // 현재는 텍스트/JSON 저장에 집중
+export async function saveAssetToFolder(
+  folderName: string,
+  assetType: 'icon' | 'emotions' | 'other',
+  data: Uint8Array | ArrayBuffer,
+  fileName: string = '',
+  extension?: string
+): Promise<string> {
+  // 1. ID 생성 (해시 또는 커스텀)
+  let id = fileName;
+  if (!id) {
+    // 해시 생성 (원본과 동일)
+    try {
+      const dataArray = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+      id = await hasher(dataArray);
+      if (extension) {
+        id += `.${extension}`;
+      }
+    } catch (error) {
+      id = v4();
+      if (extension) {
+        id += `.${extension}`;
+      }
+    }
+  }
+
+  // 3. 경로 생성
+  const path = `assets/${assetType}/${id}`;
+
+  // 4. 바이너리 저장
+  const success = await writeBinary(folderName, path, data);
+  
+  if (!success) {
+    throw new Error(`Failed to save asset to ${path}`);
+  }
+
+  console.log(`[FileManager] Saved asset to ${path}`);
+
+  // 5. 절대 경로 반환
+  return path;
+}
+
+/**
+ * 에셋 불러오기
+ * @param folderName 폴더명
+ * @param assetPath 에셋 경로
+ * @returns 바이너리 데이터 또는 null
+ */
+export async function loadAssetFromFolder(
+  folderName: string,
+  assetPath: string
+): Promise<Uint8Array | null> {
+  return await readBinary(folderName, assetPath);
 }

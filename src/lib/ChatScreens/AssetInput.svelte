@@ -44,7 +44,7 @@
                 const img = f.data
                 const name = f.name
                 const extension = name.split('.').pop().toLowerCase()
-                const imgp = await saveAsset(img,'',extension)
+                const imgp = await saveAsset(img,'',extension, name, 'other')
                 currentCharacter.additionalAssets.push([name, imgp, extension])
             }
         }

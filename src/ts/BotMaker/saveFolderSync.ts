@@ -284,8 +284,7 @@ async function saveChangesToFiles(
       jsonPointer.startsWith('/emotionImages') ||
       jsonPointer.startsWith('/additionalAssets') ||
       jsonPointer.startsWith('/ccAssets')) {
-      console.log(`[Save Folder] Skipping asset field: ${jsonPointer}`);
-      continue;
+      console.log(`[Save Folder] Add assets: ${jsonPointer}`);
     }
 
     if (jsonPointer.startsWith('/chats')) {
