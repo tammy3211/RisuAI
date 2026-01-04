@@ -187,6 +187,9 @@ export function createSaveApiHandler(): Connect.NextHandleFunction {
           '.json': 'application/json',
           '.md': 'text/markdown',
           '.txt': 'text/plain',
+          '.lua': 'text/x-lua',
+          '.yaml': 'text/yaml',
+          '.yml': 'text/yaml',
           '.png': 'image/png',
           '.jpg': 'image/jpeg',
           '.jpeg': 'image/jpeg',
@@ -195,7 +198,9 @@ export function createSaveApiHandler(): Connect.NextHandleFunction {
           '.svg': 'image/svg+xml',
           '.html': 'text/html',
           '.css': 'text/css',
-          '.js': 'text/javascript'
+          '.js': 'text/javascript',
+          '.bmp': 'image/bmp',
+          '.ico': 'image/icon'
         };
 
         if (mimeTypes[ext]) {
@@ -246,6 +251,59 @@ export function createSaveApiHandler(): Connect.NextHandleFunction {
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ success: true }));
         return;
+      }
+
+      // POST /api/save/create-from-template - defaultbot 템플릿으로 새 폴더 생성
+      if (pathname === '/api/save/create-from-template' && req.method === 'POST') {
+        try {
+          // 1. 기존 폴더 목록 조회
+          const folders = await fs.readdir(SAVE_DIR);
+          const botFolders = [];
+          
+          for (const folder of folders) {
+            const folderPath = path.join(SAVE_DIR, folder);
+            const stat = await fs.stat(folderPath);
+            if (stat.isDirectory()) {
+              const charJsonPath = path.join(folderPath, 'character.json');
+              if (await fs.pathExists(charJsonPath)) {
+                botFolders.push(folder);
+              }
+            }
+          }
+
+          // 2. 사용 가능한 폴더명 찾기
+          let folderIndex = 1;
+          let newFolderName = `char${folderIndex}`;
+          while (botFolders.includes(newFolderName)) {
+            folderIndex++;
+            newFolderName = `char${folderIndex}`;
+          }
+
+          // 3. 템플릿 복사
+          const templatePath = path.resolve(process.cwd(), 'public', 'defaultbot');
+          const targetPath = path.join(SAVE_DIR, newFolderName);
+
+          if (!(await fs.pathExists(templatePath))) {
+            res.statusCode = 404;
+            res.end(JSON.stringify({ error: 'Template not found' }));
+            return;
+          }
+
+          await fs.copy(templatePath, targetPath);
+          console.log(`[SaveAPI] Created new folder from template: ${newFolderName}`);
+
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ 
+            success: true, 
+            folderName: newFolderName 
+          }));
+          return;
+        } catch (error) {
+          console.error('[SaveAPI] Error creating from template:', error);
+          res.statusCode = 500;
+          res.end(JSON.stringify({ error: 'Failed to create folder' }));
+          return;
+        }
       }
 
       // POST /api/save/:folderName/character.json - character.json 쓰기

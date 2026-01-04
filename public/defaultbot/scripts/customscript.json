@@ -1,0 +1,15 @@
+{
+  "type": "regex",
+  "data": [
+    {
+      "comment": "example regex rule",
+      "in": "\\*([^*]+)\\*",
+      "out": {
+        "$ref": "./customscript/accent.md"
+      },
+      "type": "editoutput",
+      "flag": "g",
+      "ableFlag": true
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "type": "risu",
+  "ver": 1,
+  "data": [
+    {
+      "key": "example, lore",
+      "comment": "lorebook example entry",
+      "insertorder": 100,
+      "mode": "normal",
+      "alwaysActive": false,
+      "selective": false,
+      "secondkey": "",
+      "content": {
+        "$ref": "content/lorebook/example.md"
+      },
+      "folder": "",
+      "useRegex": false,
+      "extentions": {
+        "risu_case_sensitive": false
+      }
+    }
+  ]
+}

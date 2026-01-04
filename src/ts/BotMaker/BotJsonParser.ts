@@ -414,5 +414,26 @@ export function normalizeTriggerScript(triggerscript: triggerscript[], triggerVe
   return { modified, triggerscript: result };
 }
 
+/**
+ * defaultbot 템플릿을 사용하여 새 Save Folder Bot 생성
+ * @returns 생성된 폴더명 (예: 'char1')
+ */
+export async function createdefaultbot(): Promise<string> {
+  try {
+    const response = await fetch('/api/save/create-from-template', {
+      method: 'POST'
+    });
 
+    if (!response.ok) {
+      throw new Error(`Failed to create bot: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`[createdefaultbot] Successfully created: ${data.folderName}`);
+    return data.folderName;
+  } catch (error) {
+    console.error('[createdefaultbot] Error:', error);
+    throw error;
+  }
+} 
 

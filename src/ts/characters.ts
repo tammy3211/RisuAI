@@ -859,6 +859,10 @@ export async function addCharacter(arg:{
             await importCharacter()
             break
         case 'createfolderbot':
+            const { createdefaultbot } = await import('./BotMaker/BotJsonParser');
+            await createdefaultbot();
+            // Save Folder Bot 리스트 새로고침 필요
+            alertNormal('Save Folder Bot created successfully! Please refresh the page.');
             break
         default:
             MobileGUIStack.set(1)

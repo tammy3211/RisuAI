@@ -1,0 +1,16 @@
+[
+  {
+    "comment": "",
+    "type": "start",
+    "conditions": [],
+    "effect": [
+      {
+        "type": "triggerlua",
+        "code": {
+          "$ref": "scripts/triggerscript/main.lua"
+        }
+      }
+    ],
+    "lowLevelAccess": true
+  }
+]

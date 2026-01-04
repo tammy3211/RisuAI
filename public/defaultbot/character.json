@@ -1,0 +1,66 @@
+{
+  "name": "",
+  "desc": {
+    "$ref": "content/desc.md"
+  },
+  "firstMessage": {
+    "$ref": "content/firstMessage.md"
+  },
+  "emotionImages": [],
+  "bias": [],
+  "viewScreen": "none",
+  "globalLore": {
+    "$ref": "lorebook.json"
+  },
+  "sdData": [
+    [
+      "always",
+      "solo, 1girl"
+    ],
+    [
+      "negative",
+      ""
+    ],
+    [
+      "|character's appearance",
+      ""
+    ],
+    [
+      "current situation",
+      ""
+    ],
+    [
+      "$character's pose",
+      ""
+    ],
+    [
+      "$character's emotion",
+      ""
+    ],
+    [
+      "current location",
+      ""
+    ]
+  ],
+  "utilityBot": false,
+  "customscript": {
+    "$ref": "scripts/customscript.json"
+  },
+  "exampleMessage": "",
+  "creatorNotes": "",
+  "systemPrompt": "",
+  "postHistoryInstructions": "",
+  "alternateGreetings": [
+    {
+      "$ref": "content/alternateGreetings/greeting1.md"
+    }
+  ],
+  "tags": [],
+  "personality": "",
+  "scenario": "",
+  "replaceGlobalNote": "",
+  "triggerscript": {
+    "$ref": "scripts/triggerscript.json"
+  },
+  "additionalText": ""
+}

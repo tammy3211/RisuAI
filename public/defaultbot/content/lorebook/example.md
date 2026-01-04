@@ -1,0 +1,1 @@
+This is lorebook example content.
