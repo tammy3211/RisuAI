@@ -1,7 +1,7 @@
 <script lang="ts">
     import { PlusIcon, TrashIcon, LinkIcon, CodeXmlIcon } from "@lucide/svelte";
     import { language } from "src/lang";
-    import { alertConfirm, alertMd } from "src/ts/alert";
+    import { alertConfirm, alertMd, alertSelect } from "src/ts/alert";
     import { TriangleAlert } from '@lucide/svelte';
 
     import { DBState, hotReloading } from "src/ts/stores.svelte";
@@ -10,7 +10,6 @@
     import NumberInput from "src/lib/UI/GUI/NumberInput.svelte";
     import SelectInput from "src/lib/UI/GUI/SelectInput.svelte";
     import OptionInput from "src/lib/UI/GUI/OptionInput.svelte";
-    import migrationGuideContent from "src/ts/plugins/migrationGuide.md?raw";
     import CheckInput from "src/lib/UI/GUI/CheckInput.svelte";
     import TextAreaInput from "src/lib/UI/GUI/TextAreaInput.svelte";
     import { hotReloadPluginFiles } from "src/ts/plugins/apiV3/developMode";
@@ -51,9 +50,9 @@
                     </span>
                 {/if}
             </div>
-            {#if plugin.version === 2}
+            {#if plugin.version === 2 || plugin.version === "2.1"}
                 <button class="text-yellow-400 hover:gray-200 cursor-pointer" onclick={() => {
-                    alertMd(migrationGuideContent);
+                    alertMd(language.pluginV2Warning);
                 }} >
                     <TriangleAlert />
                 </button>
@@ -238,7 +237,22 @@
 
     <button
         onclick={async () => {
-            await hotReloadPluginFiles()
+            const v = parseInt(await alertSelect([
+                "Import plugin with hot reload",
+                "Download plugin template",
+                language.cancel
+            ]))
+            switch(v){
+                case 0:
+                    await hotReloadPluginFiles()
+                    break;
+                case 1:{
+                    const a = document.createElement('a');
+                    a.href = '/plugin_start.7z';
+                    a.download = 'plugin_starter.7z';
+                    document.body.appendChild(a);
+                }
+            }
         }}
         class="hover:text-textcolor cursor-pointer"
     >

@@ -248,12 +248,46 @@ class SafeElement {
 
         const id = v4()
 
+        const trimEvent = (event: MouseEvent | KeyboardEvent | Event) => {
+            if(event instanceof MouseEvent){
+                return {
+                    type: event.type,
+                    clientX: event.clientX,
+                    clientY: event.clientY,
+                    button: event.button,
+                    buttons: event.buttons,
+                    altKey: event.altKey,
+                    ctrlKey: event.ctrlKey,
+                    shiftKey: event.shiftKey,
+                    metaKey: event.metaKey,
+                }
+            }
+            else if(event instanceof KeyboardEvent){
+                return {
+                    type: event.type,
+                    key: event.key,
+                    code: event.code,
+                    altKey: event.altKey,
+                    ctrlKey: event.ctrlKey,
+                    shiftKey: event.shiftKey,
+                    metaKey: event.metaKey,
+                }
+            }
+            else{
+                return {
+                    type: event.type
+                }
+            }
+
+        }
+
         if(allowedDocumentEventListeners.includes(type)){
             const modifiedListener = (event: any) => {
-                listener(event)
+                listener(trimEvent(event))
             }
             this.#eventIdMap.set(id, modifiedListener)
             document.addEventListener(type, modifiedListener, realOptions)
+            return id;
         }
         else if(allowedDelayedEventListeners.includes(type)){
             const modifiedListener = (event: any) => {
@@ -262,15 +296,16 @@ class SafeElement {
                     delay = crypto.getRandomValues(new Uint32Array(1))[0];                    
                 } catch (error) {}
                 setTimeout(() => {
-                    listener(event);
+                    listener(trimEvent(event));
                 }, delay);
             }
             this.#eventIdMap.set(id, modifiedListener)
             document.addEventListener(type, modifiedListener, realOptions);
+            return id;
         }
-
-        throw new Error(`Event listener of type '${type}' is not allowed for security reasons.`);
-        
+        else{
+            throw new Error(`Event listener of type '${type}' is not allowed for security reasons.`);
+        }        
     }
 
     removeEventListener(type:string, id:string, options?: boolean | EventListenerOptions) {
