@@ -78,9 +78,16 @@ if (typeof window !== 'undefined') {
               return;
             }
 
-            if (mtime > lastMtime) {
-              console.log('[Save Folder Sync] File change detected, checking...');
-              lastMtime = mtime;
+            // mtime 변경 또는 대기 중인 리로드가 있으면 검증
+            const shouldCheck = mtime > lastMtime || reloadPendingCount > 0;
+
+            if (shouldCheck) {
+              if (mtime > lastMtime) {
+                console.log('[Save Folder Sync] File change detected, checking...');
+                lastMtime = mtime;
+              } else {
+                console.log('[Save Folder Sync] Rechecking for pending reload...');
+              }
 
               // 리로드 플래그 설정 (변경 감지 방지)
               isReloadingFromFileWatch = true;
@@ -191,6 +198,9 @@ if (typeof window !== 'undefined') {
             }
           } catch (error) {
             console.error('[Save Folder Sync] Error checking file changes:', error);
+            // 에러 발생 시에도 카운터 리셋
+            reloadPendingCount = 0;
+            isReloadingFromFileWatch = false;
           }
 
         }, 1000); // 1초마다 체크
