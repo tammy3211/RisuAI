@@ -83,6 +83,17 @@ export interface MockCharacterDB {
   }
 }
 
+/**
+ * Remove runtime-only keys from character object
+ */
+export const RUNTIME_ONLY_KEYS = [
+  '__source',
+  '__sourcePath'
+] as const;
+
+/**
+ * allowed character keys
+ */
 const CHARACTER_KEYS = [
   'name',
   'firstMessage',
