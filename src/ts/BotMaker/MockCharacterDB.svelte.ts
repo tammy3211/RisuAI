@@ -319,7 +319,7 @@ export function isCharacterKey(Path: string): boolean {
 }
 
 // Trigger Header Templates
-export const V2_TRIGGER_HEADER = {
+export const V2_TRIGGER_HEADER: triggerscript = {
   "comment": "",
   "type": "manual",
   "conditions": [],
@@ -332,7 +332,7 @@ export const V2_TRIGGER_HEADER = {
   ]
 };
 
-export const LUA_TRIGGER_HEADER = {
+export const LUA_TRIGGER_HEADER: triggerscript = {
   "comment": "",
   "type": "start",
   "conditions": [],
