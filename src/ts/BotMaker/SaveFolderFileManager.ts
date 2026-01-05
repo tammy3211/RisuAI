@@ -4,6 +4,34 @@ import { hasher } from '../parser.svelte';
 import { ensureCustomScriptWrapper, ensureLoreBookWrapper, RUNTIME_ONLY_KEYS } from './MockCharacterDB.svelte';
 
 /**
+ * add timestamp in URL for cache busting
+ * @param url original URL
+ * @returns URL format: url?t=timestamp
+ */
+export function addCacheBuster(url: string): string {
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}t=${Date.now()}`;
+}
+
+/**
+ * change $ref path to absolute URL
+ * @param refPath $ref path (relative or absolute)
+ * @param currentFileUrl current file URL
+ * @param rootUrl root URL
+ * @returns resolved absolute URL
+ */
+export function resolveRefPath(refPath: string, currentFileUrl: string, rootUrl: string): string {
+  if (refPath.startsWith('./') || refPath.startsWith('../')) {
+    // relative path - based on container file
+    const parentDir = currentFileUrl.substring(0, currentFileUrl.lastIndexOf('/') + 1);
+    const resolvedUrlObj = new URL(refPath, "http://dummy" + parentDir);
+    return resolvedUrlObj.pathname;
+  } else {
+    return rootUrl + refPath;
+  }
+}
+
+/**
  * writeBinary file
  * @param folderName name of char folder
  * @param filePath sub directory path
@@ -41,9 +69,8 @@ export async function writeBinary(folderName: string, filePath: string, data: Ui
  * @returns data as Uint8Array
  */
 export async function readBinary(folderName: string, filePath: string): Promise<Uint8Array | null> {
-  // Add timestamp to prevent caching
-  const timestamp = Date.now();
-  const url = `/api/save/${folderName}/file/${filePath}?t=${timestamp}`;
+  const baseUrl = `/api/save/${folderName}/file/${filePath}`;
+  const url = addCacheBuster(baseUrl);
 
   try {
     const res = await fetch(url);
