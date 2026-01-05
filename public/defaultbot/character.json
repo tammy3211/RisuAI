@@ -62,5 +62,8 @@
   "triggerscript": {
     "$ref": "scripts/triggerscript.json"
   },
+  "backgroundHTML": {
+    "$ref": "content/backgroundHTML.html"
+  },
   "additionalText": ""
 }
