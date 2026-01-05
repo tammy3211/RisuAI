@@ -5,9 +5,9 @@ import { parseDocument } from 'yaml';
 import { v4 as uuid } from 'uuid';
 import { loadSyncJson, loadSettingsYaml, saveToFile, saveCharacterJson, saveCharacterData, removeNulls } from './SaveFolderFileManager';
 import { cloneDeep, omit, defaults } from 'lodash';
+import { LuaBundler } from './luabundle';
 
 export type SourceMap = Record<string, string>;
-
 
 /**
  * 파일 유효성 검사
@@ -59,8 +59,9 @@ async function validateFileContent(folderName: string, jsonData: MockCharacterDB
   // .metadata 에 sync.json과 settings.yaml 검사
   let syncJsonContent = await loadSyncJson(folderName);
   let settingsYamlContent = await loadSettingsYaml(folderName);
-  let triggerVersion = "";
+  let triggerVersion: 'v1' | 'v2' | 'lua' = 'v2';
   let syncModified = false;
+  let useluabundle: boolean = false;
 
   // 1. 파일이 없을 경우 생성
   if (!syncJsonContent) {
@@ -86,7 +87,14 @@ async function validateFileContent(folderName: string, jsonData: MockCharacterDB
       return false;
     }
 
-    triggerVersion = detectedVersion;
+    if (detectedVersion === "lua" || detectedVersion === "v2" || detectedVersion === "v1") {
+      triggerVersion = detectedVersion;
+    }
+
+    if (detectedVersion === "lua" || useluabundle as boolean) {
+      useluabundle = false;
+    }
+
   } else {
     // sync.json 파싱 및 필수 필드 보완
     try {
@@ -107,6 +115,8 @@ async function validateFileContent(folderName: string, jsonData: MockCharacterDB
       const doc = parseDocument(settingsYamlContent);
       const parsedYaml = doc.toJSON() as any;
       triggerVersion = parsedYaml.triggerversion || "v2";
+      useluabundle = parsedYaml.useluabundle || false;
+
     } catch (e) {
       console.error("Failed to parse settings.yaml", e);
       triggerVersion = "v2";
@@ -117,6 +127,131 @@ async function validateFileContent(folderName: string, jsonData: MockCharacterDB
   if (!json.triggerscript) json.triggerscript = [];
 
   const { modified: triggerModified, triggerscript: normalizedTriggerScript } = normalizeTriggerScript(json.triggerscript, triggerVersion);
+
+  // luabundle 사용
+  if (useluabundle && triggerVersion === 'lua') {
+    try {
+      console.log('[validateFileContent] Processing Lua bundle...');
+      const bundler = new LuaBundler();
+      await bundler.initialize();
+
+      // triggerscript에서 triggerlua 타입의 코드 파일 경로 찾기
+      const luaFilesToBundle: Array<{ triggerIndex: number; sourcePath: string; code: string }> = [];
+      
+      for (let i = 0; i < normalizedTriggerScript.length; i++) {
+        const trigger = normalizedTriggerScript[i];
+        if (trigger.effect?.[0]?.type === 'triggerlua') {
+          const code = trigger.effect[0].code;
+          
+          // sourceMap에서 이 trigger의 원본 파일 경로 찾기
+          const triggerPointer = `/triggerscript/${i}/effect/0/code`;
+          const sourcePath = sourceMap[triggerPointer];
+          
+          if (sourcePath && sourcePath.endsWith('.lua')) {
+            // 외부 .lua 파일을 참조하는 경우
+            console.log(`[validateFileContent] Found lua file reference: ${sourcePath}`);
+            luaFilesToBundle.push({
+              triggerIndex: i,
+              sourcePath: sourcePath,
+              code: typeof code === 'string' ? code : ''
+            });
+          } else if (typeof code === 'string') {
+            // 인라인 코드인 경우
+            luaFilesToBundle.push({
+              triggerIndex: i,
+              sourcePath: '',
+              code: code
+            });
+          }
+        }
+      }
+
+      if (luaFilesToBundle.length > 0) {
+        // 메인 파일의 코드 (첫 번째 lua 파일)
+        const mainLuaFile = luaFilesToBundle[0];
+        const mainCode = mainLuaFile.code;
+        
+        // 같은 디렉토리의 다른 lua 파일들을 커스텀 모듈로 수집
+        const customModules: Record<string, string> = {};
+        
+        if (mainLuaFile.sourcePath) {
+          // 메인 파일의 디렉토리 경로
+          const mainDir = mainLuaFile.sourcePath.substring(0, mainLuaFile.sourcePath.lastIndexOf('/'));
+          
+          // mainCode에서 require 호출 찾기
+          const requirePattern = /require\s*[("']([^"')]+)[("')]/g;
+          let match;
+          
+          while ((match = requirePattern.exec(mainCode)) !== null) {
+            const moduleName = match[1];
+            
+            // 표준 모듈(json 등)이 아닌 경우에만 로컬 파일로 간주
+            if (moduleName !== 'json' && !moduleName.startsWith('src/')) {
+              const modulePath = mainDir ? `${mainDir}/${moduleName}.lua` : `${moduleName}.lua`;
+              
+              try {
+                // 모듈 파일 로드
+                const timestamp = Date.now();
+                const moduleUrl = `/api/save/${folderName}/file/${modulePath}?t=${timestamp}`;
+                const response = await fetch(moduleUrl);
+                
+                if (response.ok) {
+                  const moduleCode = await response.text();
+                  customModules[moduleName] = moduleCode;
+                  console.log(`[validateFileContent] Loaded custom module: ${moduleName} from ${modulePath}`);
+                } else {
+                  console.warn(`[validateFileContent] Module file not found: ${modulePath}`);
+                }
+              } catch (error) {
+                console.warn(`[validateFileContent] Failed to load module ${moduleName}:`, error);
+              }
+            }
+          }
+        }
+
+        // 번들링 수행
+        const bundleResult = await bundler.bundle({
+          code: mainCode,
+          customModules: customModules,
+          enableCache: true
+        });
+
+        console.log(`[validateFileContent] Bundled with modules: ${bundleResult.modules.join(', ')}`);
+        console.log(`[validateFileContent] From cache: ${bundleResult.fromCache}`);
+
+        // .compile 폴더에 번들 결과 저장
+        await saveToFile(folderName, '.compile/main.lua', bundleResult.bundled);
+        console.log('[validateFileContent] Bundle saved to .compile/main.lua');
+
+        // character.json에서 triggerlua 코드를 $ref로 교체
+        // 첫 번째 triggerlua만 $ref로 변경하고 나머지는 제거
+        let firstLuaTriggerFound = false;
+        for (let i = 0; i < normalizedTriggerScript.length; i++) {
+          const trigger = normalizedTriggerScript[i];
+          if (trigger.effect?.[0]?.type === 'triggerlua') {
+            if (!firstLuaTriggerFound) {
+              // 첫 번째 triggerlua를 $ref로 교체
+              trigger.effect[0].code = { $ref: '.compile/main.lua' } as any;
+              firstLuaTriggerFound = true;
+              console.log(`[validateFileContent] Replaced trigger ${i} with $ref to .compile/main.lua`);
+            } else {
+              // 나머지 triggerlua 트리거는 제거 (이미 번들에 포함됨)
+              normalizedTriggerScript.splice(i, 1);
+              i--; // 인덱스 조정
+              console.log(`[validateFileContent] Removed duplicate lua trigger at index ${i + 1}`);
+            }
+          }
+        }
+
+        // 수정된 triggerscript 저장
+        await saveCharacterData(folderName, '/triggerscript', normalizedTriggerScript, sourceMap);
+        console.log('[validateFileContent] Updated triggerscript with bundle reference');
+      }
+    } catch (error) {
+      console.error('[validateFileContent] Lua bundle error:', error);
+      // 번들링 실패 시 원본 유지
+    }
+  }
 
   if (triggerModified) {
     console.log(`[validateFileContent] triggerscript normalized, saving...`);
@@ -158,7 +293,7 @@ async function recursiveTraverse(
 
       // URL 해결: 절대/상대 경로 모두 처리
       let resolvedUrl: string;
-      
+
       if (refPath.startsWith('./') || refPath.startsWith('../')) {
         // 상대 경로 (., ..) - 컨테이너 파일 기준
         const parentDir = currentFileUrl.substring(0, currentFileUrl.lastIndexOf('/') + 1);
@@ -180,7 +315,7 @@ async function recursiveTraverse(
 
       // 부모 객체에 __source 배열 추가 ($ref 로드 전에)
       let shouldAddSourceToChild = false;
-      
+
       if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
         if (!Array.isArray(obj.__source)) {
           Object.defineProperty(obj, '__source', {
@@ -219,7 +354,7 @@ async function recursiveTraverse(
 
           // globalLore, customscript 특수 처리: Mock 타입이면 먼저 변환 후 재탐색
           if (key === 'globalLore' || key === 'customscript') {
-            const converted = key === 'globalLore' 
+            const converted = key === 'globalLore'
               ? ChangelorebookJSON(childData)
               : ChangecustomscriptJSON(childData);
             childData = await recursiveTraverse(converted, nextPointer, resolvedUrl, sourceMap, rootUrl);
@@ -227,7 +362,7 @@ async function recursiveTraverse(
             // 일반 JSON은 그냥 재귀 탐색
             childData = await recursiveTraverse(childData, nextPointer, resolvedUrl, sourceMap, rootUrl);
           }
-          
+
           // 부모가 배열인 경우, 로드된 childData에 __source 추가
           if (shouldAddSourceToChild && childData && typeof childData === 'object' && !Array.isArray(childData)) {
             if (!Array.isArray(childData.__source)) {
@@ -435,5 +570,8 @@ export async function createdefaultbot(): Promise<string> {
     console.error('[createdefaultbot] Error:', error);
     throw error;
   }
-} 
+}
 
+/**
+ * luabundle
+ */

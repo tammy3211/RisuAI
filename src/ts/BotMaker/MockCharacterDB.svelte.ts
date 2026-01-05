@@ -299,7 +299,7 @@ export function validateAndCompleteSyncJson(syncJsonData: any): { parsedJson: an
  * settings.yaml 생성 (triggerversion 설정)
  */
 export function createSettingsYaml(detectedVersion: string): string {
-  return `# Trigger Settings\n# v1: Legacy triggers\n# v2: V2 Header triggers\n# lua: Lua triggers\ntriggerversion: "${detectedVersion}"\n`;
+  return `# Trigger Settings\n# v1: Legacy triggers\n# v2: V2 Header triggers\n# lua: Lua triggers\ntriggerversion: "${detectedVersion}"\n\n# Use lua bundle\nuseluabundle: false\n`;
 }
 
 export function isCharacterKey(Path: string): boolean {
