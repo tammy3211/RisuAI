@@ -86,7 +86,7 @@ if (typeof window !== 'undefined') {
               isReloadingFromFileWatch = true;
 
               // 파일이 변경되었으므로 다시 로드
-              const { parseBotJson } = await import('./BotJsonParser');
+              const { parseBotJson } = await import('./MockCharParser');
               const { character, sourceMap, error: err } = await parseBotJson(current.folderName);
 
               if (err) {

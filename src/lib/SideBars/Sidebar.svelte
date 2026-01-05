@@ -53,7 +53,7 @@
     import QuickSettingsGui from "../Others/QuickSettingsGUI.svelte";
     import PluginDefinedIcon from "../Others/PluginDefinedIcon.svelte";
   import { loadSaveFolderBots, type SaveFolderBot } from "../../ts/BotMaker/saveFolderLoader.svelte";
-  import { parseBotJson } from "../../ts/BotMaker/BotJsonParser";
+  import { parseBotJson } from "../../ts/BotMaker/MockCharParser";
   import { currentSaveFolderBot } from "../../ts/BotMaker/saveFolderSync";
   let sideBarMode = $state(0);
   let editMode = $state(false);

@@ -874,7 +874,7 @@ export async function addCharacter(arg:{
             await importCharacter()
             break
         case 'createfolderbot':
-            const { createdefaultbot } = await import('./BotMaker/BotJsonParser');
+            const { createdefaultbot } = await import('./BotMaker/MockCharParser');
             await createdefaultbot();
             // Save Folder Bot 리스트 새로고침 필요
             alertNormalWait('Save Folder Bot created successfully! Please refresh the page.').then(() => {
