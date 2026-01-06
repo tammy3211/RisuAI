@@ -1,7 +1,6 @@
 <script lang="ts">
 
     import Suggestion from './Suggestion.svelte';
-    import AdvancedChatEditor from './AdvancedChatEditor.svelte';
     import { CameraIcon, DatabaseIcon, DicesIcon, GlobeIcon, ImagePlusIcon, LanguagesIcon, Laugh, MenuIcon, MicOffIcon, PackageIcon, Plus, RefreshCcwIcon, ReplyIcon, Send, StepForwardIcon, XIcon, BrainIcon, ArrowDown } from "@lucide/svelte";
     import { selectedCharID, PlaygroundStore, createSimpleCharacter, hypaV3ModalOpen, ScrollToMessageStore, additionalChatMenu, additionalFloatingActionButtons } from "../../ts/stores.svelte";
     import { tick } from 'svelte';
@@ -592,7 +591,6 @@
                     </div>
                 {/if}
 
-                {#if !DBState.db.useAdvancedEditor}
                 <textarea class="peer text-input-area focus:border-textcolor transition-colors outline-hidden text-textcolor p-2 min-w-0 border border-r-0 bg-transparent rounded-md rounded-r-none input-text text-xl grow ml-4 border-darkborderc resize-none overflow-y-hidden overflow-x-hidden max-w-full placeholder:text-sm"
                           bind:value={messageInput}
                           bind:this={inputEle}
@@ -653,12 +651,6 @@
                           oninput={()=>{updateInputSizeAll();updateInputTransateMessage(false)}}
                           style:height={inputHeight}
                 ></textarea>
-                {:else}
-                    <AdvancedChatEditor
-                            bind:value={messageInput}
-                            bind:translate={messageInputTranslate}
-                    />
-                {/if}
 
 
                 {#if $doingChat || doingChatInputTranslate}
@@ -704,7 +696,7 @@
                     </div>
                 {/if}
             </div>
-            {#if DBState.db.useAutoTranslateInput && !DBState.db.useAdvancedEditor && DBState.db.characters[$selectedCharID]?.chaId !== '§playground'}
+            {#if DBState.db.useAutoTranslateInput && DBState.db.characters[$selectedCharID]?.chaId !== '§playground'}
                 <div class="flex items-center mt-2 mb-2">
                     <label for='messageInputTranslate' class="text-textcolor ml-4">
                         <LanguagesIcon />

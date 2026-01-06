@@ -1,6 +1,6 @@
 <script lang="ts">
     import { ArrowLeft, ArrowLeftRightIcon, ArrowRight, BookmarkIcon, BotIcon, CopyIcon, PowerOff, GitBranch, HamburgerIcon, LanguagesIcon, MenuIcon, PencilIcon, RefreshCcwIcon, SplitIcon, TrashIcon, UserIcon, Volume2Icon, Scissors } from "@lucide/svelte"
-    import { aiLawApplies, changeChatTo, foldChatToMessage, getFileSrc } from "src/ts/globalApi.svelte"
+    import { aiLawApplies, changeChatTo, foldChatToMessage, getFileSrc, createChatCopyName } from "src/ts/globalApi.svelte"
     import { ColorSchemeTypeStore } from "src/ts/gui/colorscheme"
     import { longpress } from "src/ts/gui/longtouch"
     import { getModelInfo } from "src/ts/model/modellist"
@@ -731,9 +731,20 @@
     <button class="flex items-center hover:text-blue-500 transition-colors" onclick={async () => {
         await sleep(1)
         const currentChat = DBState.db.characters[selIdState.selId].chats[DBState.db.characters[selIdState.selId].chatPage]
+        
+        if(DBState.db.createFolderOnBranch && !currentChat.folderId){
+            const folderId = v4()
+            DBState.db.characters[selIdState.selId].chatFolders.unshift({
+                id: folderId,
+                name: `Branches of ${currentChat.name}`,
+                folded: false,
+            })
+            currentChat.folderId = folderId
+        }
+        
         const currentMessage = currentChat.message[idx]
         const newChat = $state.snapshot(currentChat)
-        newChat.name = `Copy of ${newChat.name}`
+        newChat.name = createChatCopyName(newChat.name, 'Branch')
         newChat.id = v4()
         newChat.message = newChat.message.slice(0, idx + 1)
         newChat.message.push({
