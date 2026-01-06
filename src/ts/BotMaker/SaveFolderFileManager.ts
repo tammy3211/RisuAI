@@ -92,7 +92,7 @@ export async function readBinary(folderName: string, filePath: string): Promise<
  * @param filePath sub directory path
  * @returns content as string
  */
-async function readFile(folderName: string, filePath: string): Promise<string | null> {
+export async function readFile(folderName: string, filePath: string): Promise<string | null> {
   const url = `/api/save/${folderName}/file/${filePath}`;
 
   try {
@@ -114,7 +114,7 @@ async function readFile(folderName: string, filePath: string): Promise<string | 
  * @param content string content
  * @returns boolean
  */
-async function writeFile(folderName: string, filePath: string, content: string): Promise<boolean> {
+export async function writeFile(folderName: string, filePath: string, content: string): Promise<boolean> {
   const url = `/api/save/${folderName}/file/${filePath}`;
 
   try {

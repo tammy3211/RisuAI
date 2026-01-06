@@ -10,8 +10,25 @@ import { V2_TRIGGER_HEADER,
   type settingsYaml,
   createMockCharacter } from './MockCharacterDB.svelte';
 import { type SourceMap } from './MockCharParser';
-import { loadSyncJson, saveToFile, loadSettingsYaml, saveCharacterJson, saveCharacterData, createRef } from './SaveFolderFileManager';
+import { loadSyncJson, 
+  saveToFile, 
+  loadSettingsYaml, 
+  saveCharacterJson, 
+  saveCharacterData, 
+  createRef,
+  readFile } from './SaveFolderFileManager';
 import { LuaBundler } from './luabundle';
+
+/**
+ * Calculate SHA-256 hash of a string (browser-compatible)
+ */
+async function hashString(text: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 /**
  * 범용 객체 병합: target에 없는 source의 필드를 추가
@@ -502,6 +519,15 @@ export async function processLuaBundle(
 
       // .metadata/build 폴더에 번들 결과 저장
       const bundledPath = '.metadata/build/main.lua';
+      const oldValue = await readFile(folderName, bundledPath);
+      const oldhash = oldValue ? await hashString(oldValue) : '';
+      const newhash = await hashString(bundleResult.bundled);
+
+      if (oldhash === newhash) {
+        console.log('[processLuaBundle] Bundled file unchanged, skipping save');
+        return;
+      }
+
       await saveToFile(folderName, bundledPath, bundleResult.bundled);
       console.log(`[processLuaBundle] Bundle saved to ${bundledPath}`);
 
