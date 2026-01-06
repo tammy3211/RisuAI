@@ -65,5 +65,9 @@
   "backgroundHTML": {
     "$ref": "content/backgroundHTML.html"
   },
-  "additionalText": ""
+  "additionalText": "",
+  "depth_prompt": {
+    "prompt": "",
+    "depth": 0
+  }
 }
