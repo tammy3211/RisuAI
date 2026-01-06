@@ -207,6 +207,34 @@ export function setValueByPath(obj: any, path: string, value: any): void {
 }
 
 /**
+ * Create a $ref object
+ * @param refPath path to external file
+ * @returns $ref object
+ */
+export function createRef(refPath: string): { $ref: string } {
+  return { $ref: refPath };
+}
+
+/**
+ * Update $ref in container data and sourceMap
+ * @param containerData container object (e.g., lorebook.json)
+ * @param relativePath relative path within container
+ * @param refPath $ref path to external file
+ * @param fullPointer full JSON pointer for sourceMap
+ * @param sourceMap source map to update
+ */
+export function updateRefInContainer(
+  containerData: any,
+  relativePath: string,
+  refPath: string,
+  fullPointer: string,
+  sourceMap: Record<string, string>
+): void {
+  setValueByPath(containerData, relativePath, createRef(refPath));
+  sourceMap[fullPointer] = refPath;
+}
+
+/**
  * Save data to appropriate file based on SourceMap
  * @param folderName name of char folder
  * @param jsonPointer JSON pointer path
@@ -356,8 +384,7 @@ export async function saveRefToContainer(
     // Calculate relative path within container
     const relativePath = wrapperPrefix + baseRelativePath + `/${key}`;
     
-    setValueByPath(containerData, relativePath, { $ref: path });
-    sourceMap[fullPointer] = path;
+    updateRefInContainer(containerData, relativePath, path, fullPointer, sourceMap);
   }
 
   await writeJson(folderName, containerFile, containerData);

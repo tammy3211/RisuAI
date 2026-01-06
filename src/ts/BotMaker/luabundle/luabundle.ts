@@ -6,6 +6,7 @@ export interface LuaBundleOptions {
     customModules?: Record<string, string>;
     enableCache?: boolean;
     preloadedModules?: string[];
+    excludeModules?: string[];  // 번들링에서 제외할 모듈 목록 (예: ['json'])
 }
 
 export interface BundleResult {
@@ -170,7 +171,8 @@ end`;
             code, 
             customModules = {}, 
             enableCache = true,
-            preloadedModules = []
+            preloadedModules = [],
+            excludeModules = ['json']  // 기본값: 표준 모듈 제외
         } = options;
 
         // 초기화 확인
@@ -184,7 +186,8 @@ end`;
         }
 
         // 1. 의존성 분석
-        const directDeps = this.analyzeDependencies(code);
+        const directDeps = this.analyzeDependencies(code)
+            .filter(dep => !excludeModules.includes(dep));  // 제외 모듈 필터링
         
         // 2. 필요한 모듈 수집
         const availableModules = this.moduleRegistry.getModules([
@@ -196,7 +199,7 @@ end`;
         const allDeps = this.resolveDependencies(
             directDeps, 
             availableModules
-        );
+        ).filter(dep => !excludeModules.includes(dep));  // 제외 모듈 필터링
         
         // 4. 캐시 확인
         if (enableCache) {

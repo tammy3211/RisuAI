@@ -454,3 +454,10 @@ export function ensureCustomScriptWrapper(value: customscript[] | MockCustomScri
   }
   return createCustomScriptWrapper([]);
 }
+
+export interface settingsYaml {
+  triggerversion: "v1" | "v2" | "lua";
+  useluabundle?: boolean;
+  excludeModules?: string[];
+  __path?: string;
+}
