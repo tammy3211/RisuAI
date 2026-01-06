@@ -63,11 +63,18 @@
     "$ref": "scripts/triggerscript.json"
   },
   "backgroundHTML": {
-    "$ref": "content/backgroundHTML.html"
+    "$ref": "content/backgroundHTML.md"
   },
   "additionalText": "",
   "depth_prompt": {
     "prompt": "",
     "depth": 0
-  }
+  },
+  "newGenData": {
+    "emotionInstructions": "",
+    "prompt": "",
+    "negative": "",
+    "instructions": ""
+  },
+  "inlayViewScreen": false
 }

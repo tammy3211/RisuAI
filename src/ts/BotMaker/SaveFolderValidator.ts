@@ -1,6 +1,6 @@
 import { cloneDeep } from 'lodash';
 import { parseDocument, stringify } from 'yaml';
-import type { triggerscript } from '../storage/database.svelte';
+import type { character, triggerscript } from '../storage/database.svelte';
 import { V2_TRIGGER_HEADER, 
   LUA_TRIGGER_HEADER, 
   CreatesyncJson, 
@@ -17,7 +17,9 @@ import { loadSyncJson,
   saveCharacterData, 
   createRef,
   readFile } from './SaveFolderFileManager';
+import { overwriteAllToFiles } from './SaveCharacterFileManager';
 import { LuaBundler } from './luabundle';
+import { compare } from 'fast-json-patch';
 
 /**
  * Calculate SHA-256 hash of a string (browser-compatible)
@@ -551,5 +553,55 @@ export async function processLuaBundle(
   } catch (error) {
     console.error('[processLuaBundle] Lua bundle error:', error);
     // 번들링 실패 시 원본 유지
+  }
+}
+
+/**
+ * characterFormatUpdate를 적용하고 변경된 데이터를 폴더에 저장
+ * @param folderName 저장할 폴더명
+ * @param character 캐릭터 데이터
+ * @param sourceMap 소스 맵
+ * @returns 업데이트 적용 여부
+ */
+export async function applyFormatUpdateToFolder(
+  folderName: string,
+  character: character,
+  sourceMap: SourceMap
+): Promise<boolean> {
+  try {
+    // characterFormatUpdate import
+    const { characterFormatUpdate } = await import('../characters');
+    
+    // 업데이트 전 복사본
+    const before = cloneDeep(character);
+    
+    // characterFormatUpdate 적용
+    const updated = characterFormatUpdate(character);
+
+    if (updated.type === 'group') {
+      return false; // 그룹 캐릭터는 처리하지 않음
+    }
+    
+    // 변경 감지 (fast-json-patch 사용)
+    const patches = compare(before, updated);
+    
+    if (patches.length === 0) {
+      console.log('[applyFormatUpdateToFolder] No changes detected');
+      return false;
+    }
+    
+    console.log(`[applyFormatUpdateToFolder] Detected ${patches.length} change(s):`);
+    patches.forEach((patch, idx) => {
+      console.log(`  [${idx + 1}] ${patch.op} at ${patch.path}`);
+    });
+    
+    // 변경된 데이터를 파일에 저장
+    await overwriteAllToFiles(folderName, updated, sourceMap);
+    
+    console.log('[applyFormatUpdateToFolder] Format update applied and saved to files');
+    return true;
+  } catch (error) {
+    console.error('[applyFormatUpdateToFolder] Failed to apply format update:', error);
+    return false;
   }
 }

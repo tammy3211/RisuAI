@@ -4,7 +4,7 @@ import { type MockCharacterDB, mergeSyncToCharacter } from 'src/ts/BotMaker/Mock
 import { v4 as uuid } from 'uuid';
 import { loadSyncJson, removeNulls, addCacheBuster, resolveRefPath } from './SaveFolderFileManager';
 import { omit, defaults } from 'lodash';
-import { convertWrapperToArray, validateFileContent } from './SaveFolderValidator';
+import { convertWrapperToArray, validateFileContent, applyFormatUpdateToFolder } from './SaveFolderValidator';
 
 export type SourceMap = Record<string, string>;
 
@@ -124,7 +124,7 @@ async function recursiveTraverse(
   return obj;
 }
 
-export async function parseBotJson(folderName: string): Promise<{ character: character, sourceMap: SourceMap, error?: boolean }> {
+export async function parseBotJson(folderName: string, options?: { skipFormatUpdate?: boolean }): Promise<{ character: character, sourceMap: SourceMap, error?: boolean }> {
   let botJson: character = createBlankChar();
   const rootUrl = `/api/save/${folderName}/file/`;
   const baseEntryUrl = `/api/save/${folderName}/character.json`;
@@ -186,6 +186,11 @@ export async function parseBotJson(folderName: string): Promise<{ character: cha
 
     // 파일 유효성 검사 및 수정
     await validateFileContent(folderName, jsonData, sourceMap);
+
+    // characterFormatUpdate 적용 및 파일 저장 (최초 로드 시에만)
+    if (!options?.skipFormatUpdate) {
+      await applyFormatUpdateToFolder(folderName, botJson, sourceMap);
+    }
 
     return { character: botJson, sourceMap };
 
