@@ -862,6 +862,9 @@ export async function addCharacter(arg:{
         MobileGUIStack.set(0)
         return
     }
+    else if(r === "createfolderbot"){ 
+        selectedCharID.set(-1)
+    }
     reseter();
     switch(r){
         case 'createfromScratch':
