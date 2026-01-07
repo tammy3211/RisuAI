@@ -89,7 +89,7 @@ if (typeof window !== 'undefined') {
       // console.log(`[Save Folder Sync] ${isSavingFile}`);
       if (!watchInterval) {
 
-        console.log('[Save Folder Sync] Started file watching for:', bot.folderName);
+        // console.log('[Save Folder Sync] Started file watching for:', bot.folderName);
 
         watchInterval = setInterval(async () => {
           const current = get(currentSaveFolderBot);
@@ -103,10 +103,8 @@ if (typeof window !== 'undefined') {
 
           if (isSavingFile > 0) {
             if (reloadPendingCount > 0) {
-              console.log('[Save Folder Sync] Saving in progress, resetting reload counter');
               reloadPendingCount = 0;
             }
-            console.log('[Save Folder Sync] Currently saving file, delaying watch start');
             return;
           }
 
@@ -127,10 +125,9 @@ if (typeof window !== 'undefined') {
 
             if (shouldCheck) {
               if (mtime > lastMtime) {
-                console.log('[Save Folder Sync] File change detected, checking...');
                 lastMtime = mtime;
               } else {
-                console.log('[Save Folder Sync] Rechecking for pending reload...');
+                // console.log('[Save Folder Sync] Rechecking for pending reload...');
               }
 
               // 리로드 플래그 설정 (변경 감지 방지)
@@ -176,10 +173,10 @@ if (typeof window !== 'undefined') {
               // 웹 데이터와 파일 데이터가 같으면 카운터 초기화
               if (currentWebData && jsonEqual(webDataForCompare, fileDataForCompare)) {
                 if (reloadPendingCount > 0) {
-                  console.log('[Save Folder Sync] File data matches web data on 2nd check, resetting counter');
+                  // console.log('[Save Folder Sync] File data matches web data on 2nd check, resetting counter');
                   reloadPendingCount = 0;
                 } else {
-                  console.log('[Save Folder Sync] File data matches web data, skipping reload');
+                  // console.log('[Save Folder Sync] File data matches web data, skipping reload');
                 }
                 isReloadingFromFileWatch = false;
                 return;
@@ -187,36 +184,35 @@ if (typeof window !== 'undefined') {
 
               // 데이터가 다르면 카운터 증가
               reloadPendingCount++;
-              console.log(`[Save Folder Sync] File data differs (count: ${reloadPendingCount}/2)`);
 
               // 카운터가 2 미만이면 리로드 대기
               if (reloadPendingCount < 2) {
-                console.log('[Save Folder Sync] Waiting for 2nd confirmation before reload...');
+                // console.log('[Save Folder Sync] Waiting for 2nd confirmation before reload...');
                 isReloadingFromFileWatch = false;
                 return;
               }
 
               // 카운터가 2 이상이면 리로드 실행
-              console.log('[Save Folder Sync] File data differs from web data, analyzing differences...');
+              // console.log('[Save Folder Sync] File data differs from web data, analyzing differences...');
               reloadPendingCount = 0; // 카운터 초기화
               charReload = true;
 
               // 차이점 분석
               const differences = compare(webDataForCompare, fileDataForCompare);
               if (differences.length > 0) {
-                console.log(`[Save Folder Sync] Found ${differences.length} difference(s):`);
+                // console.log(`[Save Folder Sync] Found ${differences.length} difference(s):`);
                 differences.forEach((diff, idx) => {
-                  console.log(`  [${idx + 1}] Path: ${diff.path}, Op: ${diff.op}`);
+                  // console.log(`  [${idx + 1}] Path: ${diff.path}, Op: ${diff.op}`);
                   if (diff.op === 'replace') {
-                    console.log(`      New:`, diff.value);
+                    // console.log(`      New:`, diff.value);
                     try {
                       const webValue = getValueByPath(currentWebData, diff.path);
-                      console.log(`      Web:`, webValue);
+                      // console.log(`      Web:`, webValue);
                     } catch (e) {
-                      console.log(`      Web: (error getting value)`);
+                      console.error(`      Web: (error getting value)`);
                     }
                   } else if (diff.op === 'add') {
-                    console.log(`      Value:`, diff.value);
+                    // console.log(`      Value:`, diff.value);
                   }
                 });
               }
@@ -256,7 +252,7 @@ if (typeof window !== 'undefined') {
         clearInterval(watchInterval);
         watchInterval = null;
         lastMtime = null;
-        console.log('[Save Folder Sync] Stopped file watching');
+        // console.log('[Save Folder Sync] Stopped file watching');
       }
     }
   });
@@ -310,7 +306,7 @@ if (typeof window !== 'undefined') {
 
           // 웹→폴더 저장 중이면 변경 감지 스킵
           if (isSavingToFolder) {
-            console.log('[Save Folder Bot] Saving to folder in progress, skipping change detection');
+            // console.log('[Save Folder Bot] Saving to folder in progress, skipping change detection');
             return;
           }
 
@@ -351,6 +347,7 @@ if (typeof window !== 'undefined') {
 
                 isSavingFile = 6;
 
+                /* chat diff debug
                 if (prevChatsLength !== currChatsLength) {
                   console.log('[Save Folder Bot DEBUG] CHATS ARRAY LENGTH CHANGED:');
                   console.log(`  - Previous length: ${prevChatsLength}`);
@@ -358,6 +355,7 @@ if (typeof window !== 'undefined') {
                   console.log(`  - Previous chats:`, previousData.chats?.map(c => ({ name: c.name, id: c.id })));
                   console.log(`  - Current chats:`, currentData.chats?.map(c => ({ name: c.name, id: c.id })));
                 }
+                */
               } else {
                 //console.log('[Save Folder Bot] No change');
               }
@@ -365,7 +363,7 @@ if (typeof window !== 'undefined') {
               const changes = findChangedPaths(previousData, currentData);
 
               if (changes.length > 0) {
-                console.log('[Save Folder Bot] Changes detected:', changes.length, 'change(s)');
+                // console.log('[Save Folder Bot] Changes detected:', changes.length, 'change(s)');
                 changes.forEach(change => console.log('  -', change));
 
                 if (currentData.globalLore && Array.isArray(currentData.globalLore)) {
@@ -373,7 +371,7 @@ if (typeof window !== 'undefined') {
                 } else if (currentData.globalLore && typeof currentData.globalLore === 'object') {
                   console.warn('[Save Folder Bot] globalLore is object (not array) - unexpected');
                   if ('__source' in currentData.globalLore) {
-                    console.log('[Save Folder Bot]   globalLore.__source:', currentData.globalLore.__source);
+                    // console.log('[Save Folder Bot]   globalLore.__source:', currentData.globalLore.__source);
                   }
                 }
 
@@ -386,7 +384,7 @@ if (typeof window !== 'undefined') {
                 } finally {
                   // 저장 완료 플래그 해제
                   isSavingToFolder = false;
-                  console.log('[Save Folder Bot] Save completed, resuming change detection');
+                  // console.log('[Save Folder Bot] Save completed, resuming change detection');
                 }
               }
             }

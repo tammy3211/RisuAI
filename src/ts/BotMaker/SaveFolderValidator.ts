@@ -148,7 +148,7 @@ async function ensureSyncJson(folderName: string): Promise<{ content: any; creat
     
     // sync.json 수정이 필요하면 저장
     if (modified) {
-      console.log('[ensureSyncJson] sync.json modified, saving...');
+      // console.log('[ensureSyncJson] sync.json modified, saving...');
       await saveToFile(folderName, '.metadata/sync.json', parsedJson);
     }
     
@@ -259,7 +259,7 @@ export async function updateSettingsYamlPaths(
     const updatedYaml = doc.toString();
     await saveToFile(folderName, '.metadata/settings.yaml', updatedYaml);
 
-    console.log(`[updateSettingsYamlPaths] Updated path mapping: ${bundledPath} -> ${originalPath}`);
+    // console.log(`[updateSettingsYamlPaths] Updated path mapping: ${bundledPath} -> ${originalPath}`);
   } catch (error) {
     console.error('[updateSettingsYamlPaths] Failed to update settings.yaml:', error);
     throw error;
@@ -279,10 +279,10 @@ export async function validateFileContent(folderName: string, jsonData: MockChar
   // 누락된 키를 character.json에 즉시 저장
   if (missingKeys.length > 0) {
     for (const key of missingKeys) {
-      console.log(`[validateFileContent] Missing key added: ${key}`);
+      // console.log(`[validateFileContent] Missing key added: ${key}`);
       try {
         await saveCharacterJson(folderName, `/${key}`, mock[key]);
-        console.log(`[validateFileContent] Saved missing key ${key} to character.json`);
+        // console.log(`[validateFileContent] Saved missing key ${key} to character.json`);
       } catch (e) {
         console.error(`[validateFileContent] Failed to save missing key ${key}`, e);
       }
@@ -292,7 +292,7 @@ export async function validateFileContent(folderName: string, jsonData: MockChar
   // globalLore와 customscript를 Wrapper 형태로 변환 (순수 배열이면 Wrapper로 감싸기)
   // 단, character.json에는 저장하지 않음 (외부 파일 참조를 유지하기 위해)
   if (Array.isArray(json.globalLore)) {
-    console.log(`[validateFileContent] globalLore is array (already loaded from external file), converting to wrapper in memory only`);
+    // console.log(`[validateFileContent] globalLore is array (already loaded from external file), converting to wrapper in memory only`);
     const { ensureLoreBookWrapper } = await import('./MockCharacterDB.svelte');
     const wrapper = ensureLoreBookWrapper(json.globalLore);
     json.globalLore = wrapper;
@@ -300,7 +300,7 @@ export async function validateFileContent(folderName: string, jsonData: MockChar
   }
 
   if (Array.isArray(json.customscript)) {
-    console.log(`[validateFileContent] customscript is array (already loaded from external file), converting to wrapper in memory only`);
+    // console.log(`[validateFileContent] customscript is array (already loaded from external file), converting to wrapper in memory only`);
     const { ensureCustomScriptWrapper } = await import('./MockCharacterDB.svelte');
     const wrapper = ensureCustomScriptWrapper(json.customscript);
     json.customscript = wrapper;
@@ -338,7 +338,7 @@ export async function validateFileContent(folderName: string, jsonData: MockChar
   }
 
   if (triggerModified) {
-    console.log(`[validateFileContent] triggerscript normalized, saving...`);
+    // console.log(`[validateFileContent] triggerscript normalized, saving...`);
     json.triggerscript = normalizedTriggerScript;
 
     try {
@@ -428,7 +428,7 @@ export async function processLuaBundle(
             
             if (originalPath) {
               actualSourcePath = originalPath;
-              console.log(`[processLuaBundle] Using original path from __path: ${originalPath}`);
+              // console.log(`[processLuaBundle] Using original path from __path: ${originalPath}`);
               
               // 원본 파일을 다시 로드
               const timestamp = Date.now();
@@ -437,7 +437,7 @@ export async function processLuaBundle(
               
               if (response.ok) {
                 mainCode = await response.text();
-                console.log(`[processLuaBundle] Loaded original file: ${originalPath}`);
+                // console.log(`[processLuaBundle] Loaded original file: ${originalPath}`);
               } else {
                 console.warn('[processLuaBundle] Failed to load original file, skipping rebundle');
                 return;
@@ -481,7 +481,7 @@ export async function processLuaBundle(
               if (response.ok) {
                 const moduleCode = await response.text();
                 customModules[moduleName] = moduleCode;
-                console.log(`[processLuaBundle] Loaded custom module: ${moduleName} from ${modulePath}`);
+                // console.log(`[processLuaBundle] Loaded custom module: ${moduleName} from ${modulePath}`);
               } else {
                 console.warn(`[processLuaBundle] Module file not found: ${modulePath}`);
               }
@@ -516,8 +516,8 @@ export async function processLuaBundle(
         excludeModules: excludeModules
       });
 
-      console.log(`[processLuaBundle] Bundled with modules: ${bundleResult.modules.join(', ')}`);
-      console.log(`[processLuaBundle] From cache: ${bundleResult.fromCache}`);
+      // console.log(`[processLuaBundle] Bundled with modules: ${bundleResult.modules.join(', ')}`);
+      // console.log(`[processLuaBundle] From cache: ${bundleResult.fromCache}`);
 
       // .metadata/build 폴더에 번들 결과 저장
       const bundledPath = '.metadata/build/main.lua';
@@ -586,19 +586,19 @@ export async function applyFormatUpdateToFolder(
     const patches = compare(before, updated);
     
     if (patches.length === 0) {
-      console.log('[applyFormatUpdateToFolder] No changes detected');
+      // console.log('[applyFormatUpdateToFolder] No changes detected');
       return false;
     }
     
-    console.log(`[applyFormatUpdateToFolder] Detected ${patches.length} change(s):`);
+    // console.log(`[applyFormatUpdateToFolder] Detected ${patches.length} change(s):`);
     patches.forEach((patch, idx) => {
-      console.log(`  [${idx + 1}] ${patch.op} at ${patch.path}`);
+      // console.log(`  [${idx + 1}] ${patch.op} at ${patch.path}`);
     });
     
     // 변경된 데이터를 파일에 저장
     await overwriteAllToFiles(folderName, updated, sourceMap);
     
-    console.log('[applyFormatUpdateToFolder] Format update applied and saved to files');
+    // console.log('[applyFormatUpdateToFolder] Format update applied and saved to files');
     return true;
   } catch (error) {
     console.error('[applyFormatUpdateToFolder] Failed to apply format update:', error);

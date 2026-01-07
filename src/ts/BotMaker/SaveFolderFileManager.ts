@@ -251,7 +251,6 @@ export async function saveCharacterData(
   if (sourceMap[jsonPointer]) {
     const filePath = sourceMap[jsonPointer];
     await saveToFile(folderName, filePath, value);
-    console.log(`[FileManager] Saved ${jsonPointer} to external file: ${filePath}`);
     return;
   }
 
@@ -266,13 +265,11 @@ export async function saveCharacterData(
       // Internal modification allowed only for JSON files
       if (filePath.endsWith('.json')) {
         const relativePath = jsonPointer.substring(parentPointer.length);
-        console.log(`[FileManager] Found parent ${parentPointer} in SourceMap -> ${filePath}`);
 
         const externalData = await readJson(folderName, filePath);
         if (externalData) {
           setValueByPath(externalData, relativePath, value);
           await writeJson(folderName, filePath, externalData);
-          console.log(`[FileManager] Saved ${jsonPointer} to external file ${filePath} (via parent ${parentPointer})`);
           return;
         }
       }
@@ -281,7 +278,6 @@ export async function saveCharacterData(
 
   // 3. character.json에 저장
   await saveCharacterJson(folderName, jsonPointer, value);
-  console.log(`[FileManager] Saved ${jsonPointer} to character.json`);
 }
 
 /**
@@ -388,7 +384,6 @@ export async function saveRefToContainer(
   }
 
   await writeJson(folderName, containerFile, containerData);
-  console.log(`[saveRefToContainer] Updated ${itemData.__source.length} ref(s) in ${containerFile} for ${itemPointer}`);
 }
 
 /**
@@ -398,14 +393,12 @@ export async function saveRefToContainer(
  * @param value value to set
  */
 export async function saveToSyncJson(folderName: string, path: string, value: any): Promise<void> {
-  console.log(`[saveToSyncJson] path: ${path}, value:`, value);
 
   // Load existing sync.json (or empty object if not found)
   let syncData = await readJson(folderName, '.metadata/sync.json') || {};
 
   let mappedPath = path;
 
-  console.log(`[saveToSyncJson] mappedPath: ${mappedPath}`);
 
   // convert dot/bracket notation to array of keys
   const pathSegments: (string | number)[] = [];
@@ -422,16 +415,12 @@ export async function saveToSyncJson(folderName: string, path: string, value: an
     }
   }
 
-  console.log(`[saveToSyncJson] pathSegments:`, pathSegments);
-
   // Traverse the path and set the value
   let current: any = syncData;
 
   for (let i = 0; i < pathSegments.length - 1; i++) {
     const key = pathSegments[i];
     const nextKey = pathSegments[i + 1];
-
-    console.log(`[saveToSyncJson] key: ${key}, nextKey: ${nextKey}, current[key]:`, current[key]);
 
     // Create array if next key is a number, otherwise create object
     if (!(key in current)) {
@@ -441,19 +430,15 @@ export async function saveToSyncJson(folderName: string, path: string, value: an
   }
 
   const lastKey = pathSegments[pathSegments.length - 1];
-  console.log(`[saveToSyncJson] Setting ${lastKey} to`, value, 'in', current);
 
   // Do not save undefined values (they are removed from JSON)
   if (value === undefined) {
-    console.log(`[saveToSyncJson] Skipping undefined value for ${lastKey}`);
     delete current[lastKey];
   } else {
     current[lastKey] = value;
   }
 
   await writeJson(folderName, '.metadata/sync.json', syncData);
-
-  console.log(`[saveToSyncJson] Saved to sync.json`);
 }
 
 /**
@@ -546,7 +531,6 @@ async function writeDataWithWrapper(
   if (!filePath) {
     if (jsonPointer.startsWith(jsonPointerPrefix)) {
       await saveCharacterJson(folderName, jsonPointer, value);
-      console.log(`[FileManager] Saved ${jsonPointer} to character.json (No external file found)`);
     } else {
       console.warn(`[FileManager] No file found for ${jsonPointer}`);
     }
@@ -556,7 +540,6 @@ async function writeDataWithWrapper(
   // 2. check file extension is json
   if (!filePath.toLowerCase().endsWith('.json')) {
     await saveToFile(folderName, filePath, value);
-    console.log(`[FileManager] Saved ${jsonPointer} to ${filePath} (Non-JSON Direct Save)`);
     return;
   }
 
@@ -582,14 +565,11 @@ async function writeDataWithWrapper(
     let saveValue = value;
     if (Array.isArray(value)) {
       saveValue = ensureWrapper(value);
-      console.log(`[FileManager] Converted array to Wrapper format`);
     }
     await writeJson(folderName, filePath, saveValue);
-    console.log(`[FileManager] Saved ${jsonPointer} to ${filePath} (Root Replacement)`);
   } else {
     setValueByPath(externalData, relativePath, value);
     await writeJson(folderName, filePath, externalData);
-    console.log(`[FileManager] Saved ${jsonPointer} to ${filePath} (adjusted path: ${relativePath})`);
   }
 }
 

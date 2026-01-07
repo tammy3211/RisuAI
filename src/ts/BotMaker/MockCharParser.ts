@@ -161,8 +161,6 @@ export async function parseBotJson(folderName: string, options?: { skipFormatUpd
       rootUrl
     );
 
-    console.log('[parseBotJson] SourceMap:', sourceMap);
-
     // 데이터 변환 및 병합
 
     // Global Lore 처리 (jsonData.globalLore는 이미 recursiveTraverse에서 배열로 변환됨)

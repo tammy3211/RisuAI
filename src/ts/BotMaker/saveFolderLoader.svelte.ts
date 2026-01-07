@@ -54,8 +54,6 @@ async function loadBotsFromWeb(): Promise<SaveFolderBot[]> {
  */
 export async function loadSaveFolderBots(): Promise<SaveFolderBot[]> {
   try {
-    console.log('[SaveFolderLoader] isTauri:', isTauri)
-
     if (!isTauri) {
       // 웹 환경: HTTP로 직접 로드
       const bots = await loadBotsFromWeb()

@@ -21,7 +21,6 @@ export async function overwriteAllToFiles(
   character: character,
   sourceMap: Record<string, string>
 ): Promise<void> {
-  console.log('[Save Folder] Overwriting all character data to files (recursive)...');
 
   // lastInteraction, bookVersion 제거 (저장 불필요)
   const charToSave = cloneDeep(character);
@@ -60,8 +59,6 @@ export async function overwriteAllToFiles(
 
   // 2단계: 재귀적으로 모든 필드 저장
   await saveAllFieldsRecursively(folderName, charToSave, '', sourceMap);
-
-  console.log('[Save Folder] All data written successfully');
 }
 
 /**
@@ -106,7 +103,6 @@ async function saveAllFieldsRecursively(
 
     // __source 배열에 정의된 필드는 스킵 ($ref로 이미 처리됨)
     if (sourceKeys.has(key)) {
-      console.log(`[Save Folder] Skipping ${currentPath}/${key} (defined in __source, already $ref)`);
       continue;
     }
 
@@ -116,7 +112,6 @@ async function saveAllFieldsRecursively(
     // globalLore, customscript는 1단계에서 이미 처리됨 (saveRefToContainer)
     // 여기서 다시 처리하면 $ref가 실제 데이터로 덮어씌워짐
     if (fieldPath === '/globalLore' || fieldPath === '/customscript') {
-      console.log(`[Save Folder] Skipping ${fieldPath} (already processed in step 1)`);
       continue;
     }
 
@@ -139,7 +134,7 @@ async function saveFieldByPath(
   value: any,
   sourceMap: Record<string, string>
 ): Promise<void> {
-  console.log(`[Save Folder] Saving field: ${jsonPointer}`);
+  // console.log(`[Save Folder] Saving field: ${jsonPointer}`);
 
   // Character 키인지 확인
   if (isCharacterKey(jsonPointer)) {
@@ -164,7 +159,6 @@ export async function saveChangesToFiles(
   const sourceChanges = changes.filter(c => c.includes('__source'));
 
   if (sourceChanges.length > 0) {
-    console.log(`[Save Folder] Processing ${sourceChanges.length} __source change(s) first`);
 
     // globalLore 배열 아이템 체크
     if (currentData.globalLore && Array.isArray(currentData.globalLore)) {
@@ -200,8 +194,6 @@ export async function saveChangesToFiles(
     const jsonPointer = path.startsWith('/')
       ? path
       : '/' + path.replace(/\./g, '/').replace(/\[/g, '/').replace(/\]/g, '');
-
-    console.log(`[Save Folder] Processing change: ${changeStr}`);
 
     // 값 가져오기
     const newValue = getValueByPath(currentData, jsonPointer);
