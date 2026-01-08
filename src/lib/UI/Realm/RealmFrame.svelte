@@ -54,8 +54,8 @@
         window.addEventListener('message', pmfunc)
 
         let data:{
-            data: ArrayBuffer,
-            name: ArrayBuffer
+            data: Uint8Array<ArrayBuffer> | ArrayBuffer,
+            name: Uint8Array<ArrayBuffer> | ArrayBuffer
         }
         
         if($ShowRealmFrameStore.startsWith('preset')){
