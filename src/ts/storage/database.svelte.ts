@@ -668,9 +668,8 @@ export function setDatabaseLite(data:Database){
                     if (current) {
                         // currentSaveFolderBot 업데이트
                         currentSaveFolderBot.set({ ...current, character: value, isDirty: true });
-                        // Svelte 반응성을 위해 실제 배열에도 저장
-                        // (toJSON trap이 DB 저장 시 빈 캐릭터로 치환함)
-                        return Reflect.set(target, prop, value, receiver);
+                        const result = Reflect.set(target, prop, value, receiver);
+                        return result;
                     }
                     // Save 폴더 봇이 아닐 때만 실제 배열에 저장
                 }

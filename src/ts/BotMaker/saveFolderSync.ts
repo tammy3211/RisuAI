@@ -280,11 +280,12 @@ if (typeof window !== 'undefined') {
 
   currentSaveFolderBot.subscribe((currentBot) => {
     if (currentBot) {
-      // 리로드나 초기 로드 시 previousData를 최신 상태로 리셋
-      // 이를 통해 리로드 직후 런타임 데이터가 사라진 것을 '삭제됨'으로 오인하는 문제 방지
-      if (savedfile === false) {
-        previousData = cloneDeep(currentBot.character);
-        savedfile = true;
+
+      // isDirty === false일 때만 previousData 리셋 (버튼 클릭이나 파일 리로드 시)
+      // isDirty === true일 때는 ccAssets 같은 데이터 변경이므로 previousData 유지
+      if (currentBot.isDirty === false) {
+        // Proxy를 벗겨낸 순수 객체로 저장해 참조 공유를 방지한다.
+        previousData = structuredClone(currentBot.character);
       }
 
 
@@ -328,6 +329,10 @@ if (typeof window !== 'undefined') {
           // DBState는 동적으로 import
           import('../stores.svelte').then(async ({ DBState }) => {
             const currentData = DBState.db.characters?.[0];
+            // ccAssets 동기화 디버깅
+            // const botData = get(currentSaveFolderBot);
+            // console.log(`[ccAssets DEBUG] DBState.db.characters[0].ccAssets:`, currentData?.ccAssets);
+            // console.log(`[ccAssets DEBUG] currentSaveFolderBot.character.ccAssets:`, botData?.character?.ccAssets);
             // console.log(`[Save Folder Bot DEBUG] chats array: ${JSON.stringify(DBState.db.characters[0].chats)}`);
             if (!currentData) return;
 
@@ -342,8 +347,10 @@ if (typeof window !== 'undefined') {
               // console.log(`  - Previous chats: ${JSON.stringify(previousData.chats[previousData.chatPage])}`);
               // console.log(`  - Current chats: ${JSON.stringify(currentData.chats[currentData.chatPage])}`);
 
+              
               if (jsonEqual(previousData, currentData) === false) {
-                savedfile = false;
+                // console.log(`previousData: ${JSON.stringify(previousData.ccAssets)}`);
+                // console.log(`currentData: ${JSON.stringify(currentData.ccAssets)}`);
 
                 isSavingFile = 6;
 
@@ -361,6 +368,10 @@ if (typeof window !== 'undefined') {
               }
 
               const changes = findChangedPaths(previousData, currentData);
+
+              // 항상 ccAssets 상태 출력
+              // console.log(`[ccAssets] Previous ccAssets (length=${previousData.ccAssets?.length ?? 0}):`, previousData.ccAssets);
+              // console.log(`[ccAssets] Current ccAssets (length=${currentData.ccAssets?.length ?? 0}):`, currentData.ccAssets);
 
               if (changes.length > 0) {
                 // console.log('[Save Folder Bot] Changes detected:', changes.length, 'change(s)');
@@ -389,8 +400,8 @@ if (typeof window !== 'undefined') {
               }
             }
 
-            // 현재 상태를 이전 상태로 저장 (깊은 복사)
-            previousData = cloneDeep(currentData);
+            // 현재 상태를 이전 상태로 저장 (Proxy를 벗긴 스냅샷)
+            previousData = structuredClone(currentData);
           });
         }, 500); // 0.5초마다 체크
       }

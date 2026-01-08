@@ -182,7 +182,13 @@ export function createMockCharacter(): MockCharacterDB {
 
     // LoreBook
     globalLore: [],
+    
+    // Assets
+    image: "",
     emotionImages: [],
+    additionalAssets: [],
+    ccAssets: [],
+    
     additionalData: {
       creator: "",
       character_version: "",
