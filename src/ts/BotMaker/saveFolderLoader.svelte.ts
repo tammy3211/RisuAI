@@ -57,7 +57,7 @@ export async function loadSaveFolderBots(): Promise<SaveFolderBot[]> {
     if (!isTauri) {
       // 웹 환경: HTTP로 직접 로드
       const bots = await loadBotsFromWeb()
-      console.log('[SaveFolderLoader] Loaded bots from web:', bots)
+      // console.log('[SaveFolderLoader] Loaded bots from web:', bots)
       return bots
     }
 
@@ -67,14 +67,14 @@ export async function loadSaveFolderBots(): Promise<SaveFolderBot[]> {
 
     const appDir = await appDataDir()
     const savePath = await join(appDir, "save")
-    console.log('[SaveFolderLoader] Save path:', savePath)
+    // console.log('[SaveFolderLoader] Save path:', savePath)
 
     const saveExists = await exists(savePath)
-    console.log('[SaveFolderLoader] Save folder exists:', saveExists)
+    // console.log('[SaveFolderLoader] Save folder exists:', saveExists)
     if (!saveExists) return []
 
     const folders = await readDir(savePath)
-    console.log('[SaveFolderLoader] Found folders:', folders)
+    // console.log('[SaveFolderLoader] Found folders:', folders)
     const bots: SaveFolderBot[] = []
 
     for (const folder of folders) {
@@ -106,7 +106,7 @@ export async function loadSaveFolderBots(): Promise<SaveFolderBot[]> {
 
     // 폴더 이름 순으로 정렬
     bots.sort((a, b) => a.folderName.localeCompare(b.folderName))
-    console.log('[SaveFolderLoader] Final bots:', bots)
+    // console.log('[SaveFolderLoader] Final bots:', bots)
     return bots
 
   } catch (e) {

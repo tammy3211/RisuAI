@@ -749,8 +749,6 @@
                     })
                     // 실제 배열에도 저장 (Svelte 반응성을 위해 필수)
                     DBState.db.characters[0] = updatedBot
-                    console.log('[Save Folder] Successfully loaded into slot 0');
-                    console.log('[Save Folder] DBState.db.characters[0]:', DBState.db.characters[0]);
                     }
                     selectedCharID.set(0)
                     reseter()

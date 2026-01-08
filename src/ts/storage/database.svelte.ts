@@ -639,28 +639,19 @@ export function setDatabase(data:Database){
 }
 
 export function setDatabaseLite(data:Database){
-    if(data.characters){
-        console.log('[setDatabaseLite] Loading characters, length:', data.characters.length);
-        data.characters.forEach((char, idx) => {
-            if (char) {
-                console.log(`  [${idx}] ${char.type === 'group' ? 'Group' : 'Character'}: ${char.name}`);
-            } else {
-                console.log(`  [${idx}] (null/undefined)`);
-            }
-        });
-        
+    if(data.characters){        
         data.characters = new Proxy(data.characters, {
             get(target, prop, receiver) {
                 if (prop === 'toJSON') {
                     return () => {
                         // JSON.stringify 시 0번 인덱스를 빈 캐릭터로 만든 복사본 반환
                         // 이렇게 하면 DB 파일에 Save 폴더 봇 데이터가 저장되지 않음
-                        console.log('[Proxy toJSON] Creating save copy, original length:', target.length);
+                        // console.log('[Proxy toJSON] Creating save copy, original length:', target.length);
                         const copy = [...target];
                         if (copy.length > 0) {
                             copy[0] = createBlankChar();
                         }
-                        console.log('[Proxy toJSON] Save copy length:', copy.length);
+                        // console.log('[Proxy toJSON] Save copy length:', copy.length);
                         return copy;
                     }
                 }

@@ -170,8 +170,8 @@
                 }
             });
             const data = await res.json();
-            console.log(data.items);
-            console.log(DBState.db.characters[$selectedCharID])
+            // console.log(data.items);
+            // console.log(DBState.db.characters[$selectedCharID])
             
             if (Array.isArray(data.items)) {
                 fishSpeechModels = data.items.map((item) => ({
