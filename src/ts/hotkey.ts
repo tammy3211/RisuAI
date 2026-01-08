@@ -9,7 +9,7 @@ import { doingChat, previewBody, sendChat } from "./process/index.svelte"
 
 export function initHotkey(){
     document.addEventListener('keydown', async (ev) => {
-        console.log(document.activeElement)
+        // console.log(document.activeElement)
         if(
             !ev.ctrlKey &&
             !ev.altKey &&
@@ -36,8 +36,8 @@ export function initHotkey(){
 
             if(hotkey.key === ev.key){
              
-                console.log(`Hotkey: "${hotkey.key}" ${hotkey.ctrl} ${hotkey.alt} ${hotkey.shift}`)
-                console.log(`Event: "${ev.key}" ${ev.ctrlKey} ${ev.altKey} ${ev.shiftKey}`)
+                // console.log(`Hotkey: "${hotkey.key}" ${hotkey.ctrl} ${hotkey.alt} ${hotkey.shift}`)
+                // console.log(`Event: "${ev.key}" ${ev.ctrlKey} ${ev.altKey} ${ev.shiftKey}`)
                 
             }
             if(hotkey.ctrl !== ev.ctrlKey){
@@ -315,7 +315,7 @@ async function quickMenu(){
 
 function clickQuery(query:string){
     let ele = document.querySelector(query) as HTMLElement
-    console.log(ele)
+    // console.log(ele)
     if(ele){
         ele.click()
     }
