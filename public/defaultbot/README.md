@@ -306,3 +306,12 @@
 1. 반드시 객체 형식: `{"$ref": "경로"}` ✅  /  `"$ref:경로"` ❌
 2. 슬래시 사용: `/` ✅  /  `\` ❌
 3. 파일명 공백은 그대로 사용 가능
+
+## 가이드라인
+
+각 기능에 대한 자세한 사항은 아래 가이드 문서를 참조하세요:
+- [로어북 가이드](./.docs/lorebook-guide.md)
+- [커스텀 스크립트 가이드](./.docs/customscript-guide.md)
+- [트리거 스크립트 가이드](./.docs/triggerscript-guide.md)
+- [CBS 문법 가이드](./.docs/curly-braced-syntax(cbs)-guide.md)
+- [에셋 사용 가이드](./.docs/assets-guide.md)

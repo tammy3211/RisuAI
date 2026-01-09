@@ -99,6 +99,13 @@ All character data MUST be stored in `/save/{character_name}/` with the followin
 │
 ├── README.md                   # Character introduction, usage guide, creator notes
 │
+├── 📁 .docs/                   # Documentation and guides (optional)
+│   ├── assets-guide.md         # Guide for using assets (images, audio, etc.)
+│   ├── lorebook-guide.md       # Guide for creating lorebook entries
+│   ├── customscript-guide.md   # Guide for custom scripts (regex)
+│   ├── triggerscript-guide.md  # Guide for trigger scripts (Lua)
+│   └── curly-braced-syntax(cbs)-guide.md  # Guide for CBS template syntax
+│
 ├── 📁 .metadata/
 │   ├── settings.yaml           # Character settings
 │   └── sync.json               # Synchronization data
