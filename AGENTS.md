@@ -443,6 +443,15 @@ When a user provides a character concept (name, personality, background, etc.), 
 
 #### Step 4: Add Supporting Elements (If Needed)
 
+**docs/**: Documentation files
+- `assets-guide.md`: Guide for using assets
+- `lorebook-guide.md`: Guide for lorebook entries
+- `customscript-guide.md`: Guide for custom scripts
+- `triggerscript-guide.md`: Guide for trigger scripts
+- `curly-braced-syntax(cbs)-guide.md`: Guide for CBS template syntax
+
+You should understand it clearly. It is **important** to read these guides before creating related content.
+
 **Alternate Greetings**: `content/alternateGreetings/*.md`
 - Different scenarios or moods
 
@@ -462,6 +471,8 @@ When a user provides a character concept (name, personality, background, etc.), 
 - Creator notes
 - Any special features or triggers
 
+Read `README.md` before starting character creation.
+
 ---
 
 ### Important Reminders
@@ -479,6 +490,8 @@ When a user provides a character concept (name, personality, background, etc.), 
 6. **Assets are placeholders** - you can only specify paths; users must add actual image files
 
 7. **Test references** - make sure all `$ref` paths are correct
+
+8. **Follow guides** - read related guides in `save/{name}/.docs/` and `save/{name}/README.md` before creating content
 
 ---
 

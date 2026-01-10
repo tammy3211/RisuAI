@@ -1,46 +1,46 @@
-# 에셋 (Assets) 사용 가이드
+# Assets Usage Guide
 
-RisuAI 캐릭터에서 사용할 수 있는 이미지, 동영상, 오디오 등의 에셋 관리 방법을 설명합니다.
+This guide explains how to manage assets such as images, videos, and audio for RisuAI characters.
 
 ---
 
-## 📂 에셋 폴더 구조
+## 📂 Asset Folder Structure
 
 ```
 /save/{character_name}/
 └── assets/
-    ├── icon/           # 캐릭터 프로필 이미지
-    ├── emotions/       # 감정 이미지들
-    └── other/          # 추가 에셋 (이미지, 동영상, 오디오 등)
+    ├── icon/           # Character profile image
+    ├── emotions/       # Emotion images
+    └── other/          # Additional assets (images, videos, audio, etc.)
 ```
 
 ---
 
-## 에셋 유형
+## Asset Types
 
-### 1. `image` - 캐릭터 아이콘
+### 1. `image` - Character Icon
 
-캐릭터의 기본 프로필 이미지입니다.
+The default profile image for the character.
 
-**character.json 설정:**
+**character.json configuration:**
 ```json
 {
   "image": "assets/icon/character.png"
 }
 ```
 
-**특징:**
-- 캐릭터 목록, 채팅 화면 등에 표시됩니다
-- PNG, WebP, JPEG, GIF 등 이미지 파일 지원
-- 권장 위치: `assets/icon/`
+**Features:**
+- Displayed in character lists, chat screens, etc.
+- Supports image files like PNG, WebP, JPEG, GIF
+- Recommended location: `assets/icon/`
 
 ---
 
-### 2. `emotionImages` - 감정 이미지
+### 2. `emotionImages` - Emotion Images
 
-캐릭터의 감정 상태에 따라 표시되는 이미지들입니다.
+Images displayed based on the character's emotional state.
 
-**character.json 설정:**
+**character.json configuration:**
 ```json
 {
   "viewScreen": "emotion",
@@ -53,135 +53,148 @@ RisuAI 캐릭터에서 사용할 수 있는 이미지, 동영상, 오디오 등�
 }
 ```
 
-**배열 구조:** `[이름, 경로]`
-- **이름**: 감정의 식별자 (소문자 권장)
-- **경로**: 이미지 파일의 경로
+**Array structure:** `[name, path]`
+- **name**: Emotion identifier (lowercase recommended)
+- **path**: Path to the image file
 
-**사용 방법:**
+**Usage:**
 
-1. **프롬프트에서 감정 표현:**
+1. **Express emotions in prompts:**
 ```markdown
-*웃으며* "좋은 아침이야!" [emotion: happy]
+*smiling* "Good morning!" [emotion: happy]
 ```
 
-2. **CBS에서 감정 이미지 삽입:**
+2. **Insert emotion images in CBS:**
 ```
 {{emotion::happy}}
 ```
 
-3. **트리거 스크립트로 자동 감정 변경:**
-감정 관련 키워드를 감지하여 자동으로 이미지를 변경할 수 있습니다.
+3. **Auto-change emotions with trigger scripts:**
+You can automatically change images by detecting emotion-related keywords.
 
-**주의사항:**
-- `viewScreen`이 `"emotion"`으로 설정되어야 작동합니다
-- 이미지 이름은 대소문자 구분 없이 매칭됩니다 (내부적으로 소문자로 변환)
-- 기본 감정 이미지가 없으면 첫 번째 이미지가 기본값으로 사용됩니다
+**Notes:**
+- `viewScreen` must be set to `"emotion"` to work
+- Image names are matched case-insensitively (converted to lowercase internally)
+- If no default emotion image exists, the first image is used as default
 
 ---
 
-### 3. `additionalAssets` - 추가 에셋
+### 3. `additionalAssets` - Additional Assets
 
-이미지, 동영상, 오디오, 폰트, CSS 등 다양한 추가 에셋을 포함할 수 있습니다.
+You can include various additional assets such as images, videos, audio, fonts, CSS, etc.
 
-**character.json 설정:**
+**character.json configuration:**
 ```json
 {
   "additionalAssets": [
-    ["배경음악", "assets/other/bgm.mp3", "mp3"],
-    ["아이템 이미지", "assets/other/sword.png", "png"],
-    ["컷신 영상", "assets/other/intro.mp4", "mp4"],
-    ["커스텀 폰트", "assets/other/myfont.ttf", "ttf"]
+    ["background_music", "assets/other/bgm.mp3", "mp3"],
+    ["item_image", "assets/other/sword.png", "png"],
+    ["cutscene_video", "assets/other/intro.mp4", "mp4"],
+    ["custom_font", "assets/other/myfont.ttf", "ttf"]
   ]
 }
 ```
 
-**배열 구조:** `[이름, 경로, 확장자]`
-- **이름**: 에셋의 식별자 (자유 작성, 대소문자 구분 없음)
-- **경로**: 파일의 경로
-- **확장자**: 파일 확장자 (`png`, `mp3`, `mp4`, `ttf` 등)
+**Array structure:** `[name, path, extension]`
+- **name**: Asset identifier (free text, case-insensitive)
+- **path**: File path
+- **extension**: File extension (`png`, `mp3`, `mp4`, `ttf`, etc.)
 
-**지원 파일 형식:**
+**Supported file formats:**
 
-| 유형 | 확장자 | 용도 |
-|------|--------|------|
-| **이미지** | png, webp, jpeg, jpg, gif, avif, svg | 일러스트, 아이콘, 배경 |
-| **동영상** | mp4, webm, avi, m4v | 컷신, 애니메이션 |
-| **오디오** | mp3 | 배경음악, 효과음 |
-| **폰트** | ttf, otf, woff, woff2 | 커스텀 폰트 |
-| **스타일** | css | 커스텀 CSS |
+| Type | Extensions | Usage |
+|------|------------|-------|
+| **Images** | png, webp, jpeg, jpg, gif, avif, svg | Illustrations, icons, backgrounds |
+| **Videos** | mp4, webm, avi, m4v | Cutscenes, animations |
+| **Audio** | mp3 | Background music, sound effects |
+| **Fonts** | ttf, otf, woff, woff2 | Custom fonts |
+| **Styles** | css | Custom CSS |
 
-**사용 방법:**
+**Usage:**
 
-#### 이미지 삽입
+#### Insert images
 ```
-{{img::배경음악}}
-{{image::아이템 이미지}}
-{{asset::아이템 이미지}}
-```
-
-#### 동영상 삽입
-```
-{{video::컷신 영상}}
+{{img::background_music}}
+{{image::item_image}}
+{{asset::item_image}}
 ```
 
-#### 오디오 삽입
+#### Insert videos
 ```
-{{audio::배경음악}}
-{{bgm::배경음악}}
-```
-
-#### 배경 이미지 설정
-```
-{{bg::배경이미지}}
+{{video::cutscene_video}}
 ```
 
-#### 파일 경로 가져오기
+#### Insert audio
 ```
-{{raw::아이템 이미지}}
-{{path::커스텀 폰트}}
+{{audio::sound_effect}}
+{{bgm::background_music}}
 ```
-- CSS `url()` 등에서 사용할 수 있는 경로를 반환합니다
 
-**CBS 예시:**
+#### Set background image
+```
+{{bg::background_image}}
+```
+- Only works in backgroundHTML property
+
+#### Get file path
+```
+{{raw::item_image}}
+{{path::custom_font}}
+```
+- Returns a path that can be used in CSS `url()` etc.
+
+**CBS examples:**
 
 ```html
-<!-- 배경 이미지 -->
-<div style="background-image: url('{{raw::배경이미지}}')">
-  콘텐츠
+<!-- Background image -->
+<div style="background-image: url('{{raw::background_image}}')">
+  Content
 </div>
 
-<!-- 커스텀 폰트 -->
+<!-- Custom font -->
 <style>
 @font-face {
   font-family: 'CustomFont';
-  src: url('{{raw::커스텀 폰트}}');
+  src: url('{{raw::custom_font}}');
 }
 </style>
 
-<!-- 이미지 표시 -->
-{{img::아이템}}
+<!-- Display image -->
+{{img::item}}
 
-<!-- 비디오 표시 -->
-{{video::인트로}}
+<!-- Display image using url -->
+<style>
+.item-box {
+  width: 200px;
+  height: 200px;
+  background-image: url('{{raw::box_image}}');
+  background-size: cover;
+}
+</style>
+<div class="item-box">
+  <img src="{{raw::item_image}}" alt="item">
+</div>
 
-<!-- 오디오 재생 -->
+<!-- Display video -->
+{{video::intro}}
+
+<!-- Play audio -->
 {{audio::bgm}}
 ```
 
-**주의사항:**
-- 에셋 이름은 **대소문자 구분 없이** 매칭됩니다 (내부적으로 소문자로 변환)
-- 같은 이름의 에셋이 여러 개 있으면 첫 번째 것이 사용됩니다
-- 큰 파일은 성능에 영향을 줄 수 있으니 적절한 크기로 최적화하세요
+**Notes:**
+- Asset names are matched **case-insensitively** (converted to lowercase internally)
+- If multiple assets have the same name, one is randomly selected
 
 ---
 
 ### 4. `ccAssets` - Character Card Assets
 
-**참고:** 이 필드는 일반적으로 **사용자가 직접 작성하지 않습니다**.
+**Note:** This field is generally **not manually created by users**.
 
-캐릭터 카드를 export/import할 때 시스템이 자동으로 관리하는 메타데이터입니다.
+This is metadata automatically managed by the system when changing character icons or exporting/importing character cards.
 
-**구조:**
+**Structure:**
 ```json
 {
   "ccAssets": [
@@ -195,21 +208,17 @@ RisuAI 캐릭터에서 사용할 수 있는 이미지, 동영상, 오디오 등�
 }
 ```
 
-**설명:**
-- Character Card V3 형식으로 export할 때 사용
-- 에셋을 카드 내부에 임베드하기 위한 메타데이터
-- 수동 편집 권장하지 않음
+**Description:**
+- Used when exporting to Character Card V3 format
+- Stores previous icon when changing icon
+- Metadata for embedding assets inside the card
+- Manual editing not recommended
 
 ---
 
-## 에셋 사용 팁
+## Asset Usage Tips
 
-### 1. 에셋 크기 최적화
-- 이미지: WebP 형식 사용 권장 (PNG보다 작은 용량)
-- 동영상: 짧은 컷신은 GIF 또는 WebM 사용
-- 오디오: MP3 비트레이트 조절 (128kbps 권장)
-
-### 2. 네이밍 규칙
+### 1. Naming Conventions
 ```json
 {
   "additionalAssets": [
@@ -219,11 +228,11 @@ RisuAI 캐릭터에서 사용할 수 있는 이미지, 동영상, 오디오 등�
   ]
 }
 ```
-- 카테고리 접두사 사용 (battle_, item_, emotion_ 등)
-- 언더스코어로 단어 구분
-- 영문 소문자 권장
+- Use category prefixes (battle_, item_, emotion_, etc.)
+- Lowercase English recommended
+- Don't include extension in asset name
 
-### 3. 폴더 구조화
+### 2. Folder Organization
 ```
 assets/
 ├── icon/
@@ -243,17 +252,17 @@ assets/
         └── explosion.gif
 ```
 
-### 4. 조건부 에셋 로딩
+### 3. Conditional Asset Loading
 
-**트리거 스크립트와 조합:**
+**With trigger scripts:**
 ```lua
--- 특정 이벤트에서만 BGM 재생
+-- Play BGM only for specific events
 if scene == "battle" then
   return "{{bgm::battle_theme}}"
 end
 ```
 
-**CBS 조건문:**
+**CBS conditionals:**
 ```
 {{#when {{getvar::location}} == castle}}
   {{bg::castle_background}}
@@ -262,31 +271,14 @@ end
 
 ---
 
-## 디버깅
+## Important Notes
+- When saving assets on the web, be careful as files with the same name may be overwritten.
+- Even after deleting assets on the web, files may remain in the assets/ folder.
 
-### 에셋이 표시되지 않을 때
-
-1. **경로 확인**
-   - 파일이 실제로 해당 위치에 있는지 확인
-   - 대소문자, 확장자 확인
-
-2. **이름 확인**
-   - CBS에서 사용한 이름이 정확한지 확인
-   - 대소문자는 무시되므로 `{{img::MyImage}}` = `{{img::myimage}}`
-
-3. **파일 형식 확인**
-   - 지원되는 형식인지 확인
-   - 손상되지 않은 파일인지 확인
-
-4. **viewScreen 설정 (감정 이미지)**
-   - `viewScreen`이 `"emotion"`으로 설정되어 있는지 확인
-
----
-
-## 에셋 관련 CBS 함수
+## Asset-Related CBS Functions
 
 ### `{{emotionlist}}`
-사용 가능한 감정 이미지 목록을 JSON 배열로 반환합니다.
+Returns a JSON array of available emotion images.
 
 ```
 {{emotionlist}}
@@ -294,25 +286,25 @@ end
 ```
 
 ### `{{assetlist}}`
-사용 가능한 추가 에셋 목록을 JSON 배열로 반환합니다.
+Returns a JSON array of available additional assets.
 
 ```
 {{assetlist}}
-// 출력: ["배경음악","아이템 이미지","컷신 영상"]
+// Output: ["background_music","item_image","cutscene_video"]
 ```
 
 ---
 
-## 요약
+## Summary
 
-| 필드 | 용도 | 배열 구조 | 필수 여부 |
+| Field | Purpose | Array Structure | Required |
 |------|------|-----------|-----------|
-| `image` | 캐릭터 아이콘 | 문자열 | 선택 |
-| `emotionImages` | 감정별 이미지 | `[이름, 경로]` | 선택 |
-| `additionalAssets` | 기타 미디어 | `[이름, 경로, 확장자]` | 선택 |
-| `ccAssets` | 카드 메타데이터 | 객체 배열 | 자동 생성 |
+| `image` | Character Icon | String | Optional |
+| `emotionImages` | Emotion Images | `[name, path]` | Optional |
+| `additionalAssets` | Additional Media | `[name, path, extension]` | Optional |
+| `ccAssets` | Card Metadata | Object Array | Auto-generated |
 
-**권장 사용법:**
-- `emotionImages`: 캐릭터가 다양한 표정을 보여야 할 때
-- `additionalAssets`: 배경, 아이템, BGM 등 추가 콘텐츠가 필요할 때
-- CBS/트리거와 조합하여 동적인 연출 구현
+**Recommended Usage:**
+- `emotionImages`: When the character needs to show various expressions
+- `additionalAssets`: When additional content like backgrounds, items, BGM, etc. is needed
+- Combine with CBS/trigger scripts for dynamic presentations

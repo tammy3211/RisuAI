@@ -1,291 +1,291 @@
-# [캐릭터 이름]
+# [Character Name]
 
-> 에이전트에게 알려줄 한 줄 소개를 여기에 작성하세요.
+> Write a one-line introduction for the agent here.
 
-## 📖 캐릭터 소개
+## 📖 Character Introduction
 
-여기에 캐릭터의 배경, 성격, 세계관 등을 자유롭게 작성하세요.
+Write freely about the character's background, personality, worldview, etc.
 
-## 💡 에이전트 가이드
+## 💡 Agent Guide
 
-- **추천 모델**: (예: Claude 4.5, Gemini 3 등)
-- **기능 설명**: (트리거 스크립트, 커스텀 스크립트 등)
+- **Recommended Model**: (e.g., Claude 4.5, Gemini 3, etc.)
+- **Feature Description**: (trigger scripts, custom scripts, etc.)
 
-## ✍️ 제작자 노트
+## ✍️ Creator Notes
 
-캐릭터 제작 의도, 강조할 부분, 그외 필요한 정보 등을 작성하세요.
+Write about the character creation intent, points to emphasize, and other necessary information.
 
 ---
 
-<!-- 이하는 RisuAI 기술 문서입니다 -->
+<!-- Below is RisuAI technical documentation -->
 
-# RisuAI 캐릭터 파일 구조 가이드
+# RisuAI Character File Structure Guide
 ...
 
-이 문서는 RisuAI 캐릭터를 제작할 때 필요한 파일 구조와 각 필드에 대한 설명을 제공합니다.
+This document provides the file structure and field descriptions needed when creating RisuAI characters.
 
 ---
 
-## character.json 필드 설명
+## character.json Field Descriptions
 
-### 기본 필드
+### Basic Fields
 
 #### `name`
-- **설명**: 캐릭터 이름
-- **사용**: 필수
+- **Description**: Character name
+- **Usage**: Required
 
 #### `firstMessage`
-- **설명**: 첫 시작 메시지
-- **권장**: `content/firstMessage.md` 파일로 분리하고 `$ref`로 참조
+- **Description**: First greeting message
+- **Recommended**: Separate into `content/firstMessage.md` file and reference with `$ref`
 
 #### `desc`
-- **설명**: 메인 프롬프트 (캐릭터의 외모, 성격, 배경, 행동 지침 등)
-- **권장**: `content/desc.md` 파일로 분리하고 `$ref`로 참조
+- **Description**: Main prompt (character's appearance, personality, background, behavior guidelines, etc.)
+- **Recommended**: Separate into `content/desc.md` file and reference with `$ref`
 
 #### `personality`
-- **설명**: 성격 필드
-- **상태**: 이전 v2 버전과 호환을 위한 필드
-- **권장**: 사용하지 않고 `desc`로 대체
+- **Description**: Personality field
+- **Status**: Field for compatibility with previous v2 version
+- **Recommended**: Do not use, replace with `desc`
 
 #### `scenario`
-- **설명**: 시나리오 필드
-- **상태**: 이전 v2 버전과 호환을 위한 필드
-- **권장**: 사용하지 않고 `desc`로 대체
+- **Description**: Scenario field
+- **Status**: Field for compatibility with previous v2 version
+- **Recommended**: Do not use, replace with `desc`
 
 #### `exampleMessage`
-- **설명**: 예시 대화 메시지
-- **권장**: 사용하지 않음
+- **Description**: Example conversation messages
+- **Recommended**: Do not use
 
 #### `creatorNotes`
-- **설명**: 제작자 코멘트 (캐릭터에 영향 없음)
-- **형식**: 
+- **Description**: Creator comments (no effect on character)
+- **Format**: 
   ```
   # `en`
-  영어 코멘트
+  English comment
   # `ko`
-  한국어 코멘트
+  Korean comment
   ```
-- **양식**: `\n# \`{lang}\`\n {comment}`
+- **Syntax**: `\n# \`{lang}\`\n {comment}`
 
 #### `systemPrompt`
-- **설명**: 시스템 프롬프트
-- **권장**: 사용하지 않고 `desc`에 포함
+- **Description**: System prompt
+- **Recommended**: Do not use, include in `desc`
 
 #### `replaceGlobalNote`
-- **설명**: 글로벌 노트를 대신해서 사용
-- **상태**: 요즘은 직접 사용보다 로어북으로 대체해서 많이 사용
+- **Description**: Use instead of global note
+- **Status**: Nowadays often replaced with lorebook instead of direct use
 
 #### `alternateGreetings`
-- **설명**: 또 다른 첫 시작 메시지들
-- **타입**: 배열
-- **권장**: `content/alternateGreetings/*.md` 파일로 분리
+- **Description**: Alternative first greeting messages
+- **Type**: Array
+- **Recommended**: Separate into `content/alternateGreetings/*.md` files
 
 #### `postHistoryInstructions`
-- **상태**: 사용하지 않음
+- **Status**: Not used
 
 #### `tags`
-- **상태**: 사용하지 않음
+- **Status**: Not used
 
 #### `nickname`
-- **설명**: 닉네임이 설정되면 채팅에서 캐릭터 이름 대신 `{{char}}`에 사용됨
+- **Description**: When nickname is set, used in `{{char}}` instead of character name in chat
 
 #### `source`
-- **상태**: 사용하지 않음
+- **Status**: Not used
 
 #### `creation_date`
-- **설명**: 생성된 시간의 Unix timestamp
+- **Description**: Unix timestamp of creation time
 
 ---
 
-### Extensions 필드
+### Extensions Fields
 
 #### `bias`
-- **설명**: LLM 설정을 위한 바이어스
-- **상태**: 최근 모델은 지원하지 않음에 따라 잘 사용되지 않음
+- **Description**: Bias for LLM settings
+- **Status**: Not often used as recent models don't support it
 
 #### `viewScreen`
-- **설명**: 이미지 표시 방식 설정
-- **옵션**:
-  - `'emotion'`: 감정 이미지 사용
-  - `'none'`: 기본값
-  - `'imggen'`: 이미지 생성 기능 사용
-  - `'vn'`: 사용 안 함
+- **Description**: Image display method setting
+- **Options**:
+  - `'emotion'`: Use emotion images
+  - `'none'`: Default
+  - `'imggen'`: Use image generation feature
+  - `'vn'`: Not used
 
 #### `utilityBot`
-- **설명**: RP와 관련된 프롬프트 제거
-- **용도**: 캐릭터의 프롬프트만 출력하여 테스트에 용이
+- **Description**: Remove RP-related prompts
+- **Purpose**: Useful for testing by outputting only character prompts
 
 #### `sdData`
-- **상태**: 사용하지 않음
+- **Status**: Not used
 
 #### `backgroundHTML`
-- **설명**: 배경 HTML
-- **용도**: 배경에 HTML을 띄우거나 `<style>` 블록을 통한 전역 CSS 설정에 사용
-- **권장**: `content/backgroundHTML.md` 파일로 분리
+- **Description**: Background HTML
+- **Purpose**: Used to display HTML in background or set global CSS through `<style>` blocks
+- **Recommended**: Separate into `content/backgroundHTML.md` file
 
 #### `additionalText`
-- **설명**: 캐릭터 설명에 추가될 텍스트
-- **상태**: 이전 v2 버전과 호환을 위한 필드
-- **권장**: 사용하지 않고 `desc`로 대체
+- **Description**: Text to be added to character description
+- **Status**: Field for compatibility with previous v2 version
+- **Recommended**: Do not use, replace with `desc`
 
 #### `largePortrait`
-- **설명**: 아이콘이 세로로 긴 이미지의 경우 사용
-- **영향**: 캐릭터에 영향 없음 (UI 표시용)
+- **Description**: Use when icon is a vertically long image
+- **Effect**: No effect on character (for UI display)
 
 #### `inlayViewScreen`
-- **설명**: 이미지가 별도로 표시되지 않고 채팅 안에 표시되게 하는 설정
+- **Description**: Setting to display images within chat instead of separately
 
 #### `newGenData`
-- **설명**: 이미지 생성 관련 데이터
-- **조건**: `viewScreen`이 `emotion` 혹은 `imggen`일 경우 사용, `none`일 경우 무시
+- **Description**: Image generation related data
+- **Condition**: Used when `viewScreen` is `emotion` or `imggen`, ignored when `none`
 
 #### `lowLevelAccess`
-- **설명**: 트리거 등에 약한 데이터 접근 권한을 줌
+- **Description**: Grants weak data access permissions to triggers, etc.
 
 #### `defaultVariables`
-- **설명**: 기본 변수 정의
-- **형식**: `<변수 이름>=<변수 값>` 형식으로 작성하고 개행으로 구분
+- **Description**: Define default variables
+- **Format**: Write in `<variable name>=<variable value>` format, separated by newlines
 
 #### `prebuiltAssetCommand`
-- **상태**: 사용 안 함
+- **Status**: Not used
 
 #### `prebuiltAssetExclude`
-- **상태**: 사용 안 함
+- **Status**: Not used
 
 #### `prebuiltAssetStyle`
-- **상태**: 사용 안 함
+- **Status**: Not used
 
 #### `depth_prompt`
-- **상태**: 이전 v2 버전과 호환을 위한 필드, 더 이상 사용하지 않음
+- **Status**: Field for compatibility with previous v2 version, no longer used
 
 #### `group_only_greetings`
-- **설명**: 그룹챗용 설정
-- **상태**: 사용 안 함
+- **Description**: Setting for group chat
+- **Status**: Not used
 
 ---
 
 ### Modules
 
 #### `customscript`
-- **설명**: 채팅에 사용될 정규식을 정의
-- **참조**: `scripts/customscript.json`
+- **Description**: Define regex to be used in chat
+- **Reference**: `scripts/customscript.json`
 
 #### `triggerscript`
-- **설명**: 채팅에 사용될 트리거를 정의
-- **참조**: `scripts/triggerscript.json`
+- **Description**: Define triggers to be used in chat
+- **Reference**: `scripts/triggerscript.json`
 
 ---
 
 ### LoreBook
 
 #### `globalLore`
-- **설명**: 캐릭터의 로어북
-- **참조**: `lorebook.json`
+- **Description**: Character's lorebook
+- **Reference**: `lorebook.json`
 
 #### `loreSettings`
-- **설명**: 로어북 세팅
+- **Description**: Lorebook settings
 
 #### `lorePlus`
-- **설명**: 로어북 추가 기능
-- **기본값**: `false`
-- **상태**: 현재 기능 미구현으로 사용 안 함
+- **Description**: Lorebook additional features
+- **Default**: `false`
+- **Status**: Currently not used as feature is not implemented
 
 #### `loreExt`
-- **상태**: 사용 안 함
+- **Status**: Not used
 
 ---
 
 ### Assets
 
 #### `image`
-- **설명**: 기본 아이콘 경로
-- **권장 위치**: `assets/icon/`
+- **Description**: Default icon path
+- **Recommended location**: `assets/icon/`
 
 #### `emotionImages`
-- **설명**: 감정 이미지 경로들
-- **권장 위치**: `assets/emotions/`
+- **Description**: Emotion image paths
+- **Recommended location**: `assets/emotions/`
 
 #### `additionalAssets`
-- **설명**: 추가 에셋 경로
-- **권장 위치**: `assets/other/`
+- **Description**: Additional asset paths
+- **Recommended location**: `assets/other/`
 
 #### `ccAssets`
-- **상태**: 미정의
+- **Status**: Undefined
 
 ---
 
 ### Extra
 
 #### `extentions`
-- **상태**: 사용 안 함
+- **Status**: Not used
 
 #### `additionalData`
-- **설명**: 메타데이터
-- **포함 항목**: `"creator"`, `"character_version"`, `"tag": []`
-- **상태**: 사용되지 않음
+- **Description**: Metadata
+- **Included items**: `"creator"`, `"character_version"`, `"tag": []`
+- **Status**: Not used
 
 ---
 
 ## .metadata/sync.json
 
-채팅을 하기 위한 동기화 데이터(chat 데이터, 채팅 UUID 등)를 포함합니다.
+Contains synchronization data for chatting (chat data, chat UUID, etc.).
 
-**주의**: 캐릭터를 export할 때 반영되지 않는 데이터들입니다.
+**Note**: This data is not reflected when exporting characters.
 
 ---
 
 ## .metadata/settings.yaml
 
-캐릭터 파싱 시 옵션을 설정합니다.
+Sets options when parsing characters.
 
 ### `triggerversion`
-- **설명**: 트리거 버전 선택
-- **옵션**:
-  - `v1`: Legacy 트리거
-  - `v2`: V2 Header 트리거
-  - `lua`: Lua 트리거 (권장)
-- **권장값**: `"lua"`
+- **Description**: Select trigger version
+- **Options**:
+  - `v1`: Legacy trigger
+  - `v2`: V2 Header trigger
+  - `lua`: Lua trigger (recommended)
+- **Recommended value**: `"lua"`
 
 ### `useluabundle`
-- **타입**: `boolean`
-- **설명**: Lua를 한 파일이 아니라 `require`를 이용해 여러 파일로 관리하고 싶을 경우 사용
-- **기본값**: `false`
+- **Type**: `boolean`
+- **Description**: Use when you want to manage Lua with multiple files using `require` instead of one file
+- **Default**: `false`
 
 ---
 
-## 권장 사항 요약
+## Recommendations Summary
 
-### 사용 권장 필드
-- `name`: 캐릭터 이름
-- `desc`: 메인 프롬프트 (`content/desc.md`로 분리)
-- `firstMessage`: 첫 메시지 (`content/firstMessage.md`로 분리)
-- `alternateGreetings`: 대체 인사말 (`content/alternateGreetings/*.md`로 분리)
-- `globalLore`: 로어북 (`lorebook.json` 및 `content/lorebook/*.md`)
-- `customscript`: 커스텀 스크립트
-- `triggerscript`: 트리거 스크립트
-- `viewScreen`: 이미지 표시 방식
-- `backgroundHTML`: 배경 HTML/CSS
+### Recommended Fields
+- `name`: Character name
+- `desc`: Main prompt (separate into `content/desc.md`)
+- `firstMessage`: First message (separate into `content/firstMessage.md`)
+- `alternateGreetings`: Alternate greetings (separate into `content/alternateGreetings/*.md`)
+- `globalLore`: Lorebook (`lorebook.json` and `content/lorebook/*.md`)
+- `customscript`: Custom scripts
+- `triggerscript`: Trigger scripts
+- `viewScreen`: Image display method
+- `backgroundHTML`: Background HTML/CSS
 
-### 사용하지 않는 것을 권장하는 필드
-- `personality`, `scenario`, `additionalText`: `desc`로 대체
-- `systemPrompt`: `desc`에 포함
-- `exampleMessage`: 효과 미미
-- `bias`: 최신 모델 미지원
-- 기타 deprecated 필드들
+### Fields Not Recommended for Use
+- `personality`, `scenario`, `additionalText`: Replace with `desc`
+- `systemPrompt`: Include in `desc`
+- `exampleMessage`: Minimal effect
+- `bias`: Not supported by latest models
+- Other deprecated fields
 
-### 파일 분리 권장
-긴 텍스트 콘텐츠는 JSON에 직접 작성하지 말고, 별도 `.md` 파일로 분리하고 `$ref`로 참조하세요:
+### File Separation Recommended
+For long text content, do not write directly in JSON. Separate into `.md` files and reference with `$ref`:
 - `desc` → `content/desc.md`
 - `firstMessage` → `content/firstMessage.md`
 - `alternateGreetings` → `content/alternateGreetings/*.md`
-- `globalLore` 내용 → `content/lorebook/*.md`
+- `globalLore` content → `content/lorebook/*.md`
 - `backgroundHTML` → `content/backgroundHTML.md`
 
 ---
 
-## $ref 파일 참조 시스템
+## $ref File Reference System
 
-### 기본 형식
+### Basic Format
 ```json
 {
   "desc": {"$ref": "content/desc.md"},
@@ -293,25 +293,25 @@
 }
 ```
 
-### 경로 방식
+### Path Methods
 
-**절대 경로**: `/save/{character_name}/` 기준
-- 예: `{"$ref": "content/desc.md"}`
+**Absolute Path**: Based on `/save/{character_name}/`
+- Example: `{"$ref": "content/desc.md"}`
 
-**상대 경로**: 현재 JSON 파일 위치 기준
-- 예: `{"$ref": "./customscript/accent.md"}`
-- `scripts/customscript.json`에서 상위 폴더: `{"$ref": "../content/shared.md"}`
+**Relative Path**: Based on current JSON file location
+- Example: `{"$ref": "./customscript/accent.md"}`
+- Parent folder from `scripts/customscript.json`: `{"$ref": "../content/shared.md"}`
 
-### 주의사항
-1. 반드시 객체 형식: `{"$ref": "경로"}` ✅  /  `"$ref:경로"` ❌
-2. 슬래시 사용: `/` ✅  /  `\` ❌
-3. 파일명 공백은 그대로 사용 가능
+### Notes
+1. Must be object format: `{"$ref": "path"}` ✅  /  `"$ref:path"` ❌
+2. Use slash: `/` ✅  /  `\` ❌
+3. Spaces in filenames can be used as-is
 
-## 가이드라인
+## Guidelines
 
-각 기능에 대한 자세한 사항은 아래 가이드 문서를 참조하세요:
-- [로어북 가이드](./.docs/lorebook-guide.md)
-- [커스텀 스크립트 가이드](./.docs/customscript-guide.md)
-- [트리거 스크립트 가이드](./.docs/triggerscript-guide.md)
-- [CBS 문법 가이드](./.docs/curly-braced-syntax(cbs)-guide.md)
-- [에셋 사용 가이드](./.docs/assets-guide.md)
+For detailed information about each feature, refer to the guide documents below:
+- [Lorebook Guide](./.docs/lorebook-guide.md)
+- [Custom Script Guide](./.docs/customscript-guide.md)
+- [Trigger Script Guide](./.docs/triggerscript-guide.md)
+- [CBS Syntax Guide](./.docs/curly-braced-syntax(cbs)-guide.md)
+- [Asset Usage Guide](./.docs/assets-guide.md)
