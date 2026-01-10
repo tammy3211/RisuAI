@@ -151,7 +151,7 @@ function sleep(id, time) end
 ---Parse CBS for (raw JSON string)
 ---@param id string
 ---@param value string
-function setFullChatMain(id, value) end
+function cbs(id, value) end
 
 ---Set full chat (from table)
 ---@param id string
@@ -355,9 +355,3 @@ function getUserLastMessage(id) end
 ---@param callback function
 ---@return function
 function async(callback) end
-
----JSON library (already defined in json.lua)
-json = {}
-
----Promise library
-Promise = {}
