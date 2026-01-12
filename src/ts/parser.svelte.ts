@@ -12,7 +12,6 @@ import { calcString } from './process/infunctions';
 import { findCharacterbyId, getPersonaPrompt, getUserIcon, getUserName, parseKeyValue, pickHashRand, replaceAsync} from './util';
 import { getInlayAssetBlob } from './process/files/inlays';
 import { getModuleAssets, getModuleLorebooks, getModules } from './process/modules';
-import type { OpenAIChat } from './process/index.svelte';
 import hljs from 'highlight.js/lib/core'
 import 'highlight.js/styles/atom-one-dark.min.css'
 import { language } from 'src/lang';
@@ -1126,7 +1125,7 @@ const legacyBlockMatcher = (p1:string,matcherArg:matcherArg) => {
 
 type blockMatch = 'ignore'|'parse'|'nothing'|'ifpure'|'pure'|'each'|'function'|'pure-display'|'normalize'|'escape'|'newif'|'newif-falsy'
 
-function parseArray(p1:string):string[]{
+function parseArray(p1:string): unknown[]{
     try {
         const arr = JSON.parse(p1)
         if(Array.isArray(arr)){
@@ -1138,7 +1137,7 @@ function parseArray(p1:string):string[]{
     }
 }
 
-function parseDict(p1:string):{[key:string]:string}{
+function parseDict(p1 :string): {[key:string]: unknown}{
     try {
         return JSON.parse(p1)
     } catch (error) {
@@ -1146,7 +1145,7 @@ function parseDict(p1:string):{[key:string]:string}{
     }
 }
 
-function makeArray(p1:string[]):string{
+function makeArray(p1: unknown[]): string{
     return JSON.stringify(p1.map((f) => {
         if(typeof(f) === 'string'){
             return f.replace(/::/g, '\\u003A\\u003A')
@@ -1721,9 +1720,8 @@ export function risuChatParser(da:string, arg:{
                                 array = parseArray(blockType.type2.substring(0, subind))
                             }
                             let added = ''
-                            for(let i = 0;i < array.length;i++){
-                                const res = matchResult.replaceAll(`{{slot::${sub}}}`, array[i])
-                                added += res
+                            for(let i = 0; i < array.length; i++) {
+                                added += matchResult.replaceAll(`{{slot::${sub}}}`, typeof(array[i]) === 'string' ? array[i] as string : JSON.stringify(array[i]))
                             }
                             da = da.substring(0, pointer + 1) + (blockType.mode === 'keep' ? added : added.trim()) + da.substring(pointer + 1)
                             break
@@ -1854,53 +1852,6 @@ export function setChatVar(key:string, value:string){
     DBState.db.characters[selectedChar].chats[DBState.db.characters[selectedChar].chatPage].scriptstate['$' + key] = value
 }
 
-export type PromptParsed ={[key:string]:string|PromptParsed}
-
-export function promptTypeParser(prompt:string):string | PromptParsed{
-    //XML type
-    try {
-        const parser = new DOMParser()
-        const dom = `<root>${prompt}</root>`
-        const xmlDoc = parser.parseFromString(dom, "text/xml")
-        const root = xmlDoc.documentElement
-
-        const errorNode = root.getElementsByTagName('parsererror')
-
-        if(errorNode.length > 0){
-            throw new Error('XML Parse Error') //fallback to other parser
-        }
-
-        const parseNode = (node:Element):string|PromptParsed => {
-            if(node.children.length === 0){
-                return node.textContent
-            }
-
-            const data:{[key:string]:string|PromptParsed} = {}
-
-            for(let i=0;i<node.children.length;i++){
-                const child = node.children[i]
-                data[child.tagName] = parseNode(child)
-            }
-
-            return data
-        }
-
-        const pnresult = parseNode(root)
-
-        if(typeof(pnresult) === 'string'){
-            throw new Error('XML Parse Error') //fallback to other parser
-        }
-
-        return pnresult
-
-    } catch (error) {
-        
-    }
-
-    return prompt
-}
-
-
 export function applyMarkdownToNode(node: Node) {
     if (node.nodeType === Node.TEXT_NODE) {
         const text = node.textContent;
@@ -1926,64 +1877,4 @@ export function applyMarkdownToNode(node: Node) {
             applyMarkdownToNode(child);
         }
     }
-}
-
-export function parseChatML(data:string):OpenAIChat[]|null{
-
-    const starter = '<|im_start|>'
-    const seperator = '<|im_sep|>'
-    const ender = '<|im_end|>'
-    const trimedData = data.trim()
-    if(!trimedData.startsWith(starter)){
-        return null
-    }
-
-    return trimedData.split(starter).filter((f) => f !== '').map((v) => {
-        let role:'system'|'user'|'assistant' = 'user'
-        //default separators
-        if(v.startsWith('user' + seperator)){
-            role = 'user'
-            v = v.substring(4 + seperator.length)
-        }
-        else if(v.startsWith('system' + seperator)){
-            role = 'system'
-            v = v.substring(6 + seperator.length)
-        }
-        else if(v.startsWith('assistant' + seperator)){
-            role = 'assistant'
-            v = v.substring(9 + seperator.length)
-        }
-        //space/newline separators
-        else if(v.startsWith('user ') || v.startsWith('user\n')){
-            role = 'user'
-            v = v.substring(5)
-        }
-        else if(v.startsWith('system ') || v.startsWith('system\n')){
-            role = 'system'
-            v = v.substring(7)
-        }
-        else if(v.startsWith('assistant ') || v.startsWith('assistant\n')){
-            role = 'assistant'
-            v = v.substring(10)
-        }
-
-        v = v.trim()
-
-        if(v.endsWith(ender)){
-            v = v.substring(0, v.length - ender.length)
-        }
-
-
-        let thoughts:string[] = []
-        v = v.replace(/<Thoughts>(.+)<\/Thoughts>/gms, (match, p1) => {
-            thoughts.push(p1)
-            return ''
-        })
-
-        return {
-            role: role,
-            content: risuChatParser(v),
-            thoughts: thoughts
-        }
-    })
 }

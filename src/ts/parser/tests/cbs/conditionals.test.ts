@@ -2,8 +2,7 @@ import fc from 'fast-check'
 import { writable } from 'svelte/store'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { risuChatParser } from '../../../parser.svelte'
-import type { character } from '../../../storage/database.svelte'
-import { trimVarPrefix } from './lib'
+import { trimVarPrefix, validCBSArgProp } from './lib'
 
 //#region module mocks
 
@@ -64,9 +63,6 @@ vi.mock(import('../../../stores.svelte'), () => {
 
 //#endregion
 
-/** No hashes, colons, curly braces, line breaks */
-const validCBSArgProp = fc.stringMatching(/^[^#:{}\r\n]+$/)
-
 const template = (op: string, body: string) => `0 {{${op}}}${body}{{/}} 9`
 const quickParse = (...args: Parameters<typeof template>) => risuChatParser(template(...args))
 
@@ -86,19 +82,34 @@ describe('#if', () => {
   test('renders when "1" or "true"', () => {
     expect(quickParse('#if 1', 'CBS')).toBe(`0 CBS 9`)
     expect(quickParse('#if true', 'CBS')).toBe(`0 CBS 9`)
+
+    // Edge case: {{#if 1\s+.*}} also renders
+    fc.assert(
+      fc.property(
+        fc.constantFrom('1', 'true'),
+        fc.stringMatching(/^ +[^#:{}\r\n]*$/),
+        (truthy, tail) => {
+          expect(quickParse(`#if ${truthy}${tail}`, 'CBS')).toBe(`0 CBS 9`)
+        }
+      ),
+    )
   })
 
   test('does not render when anything else', async () => {
     expect(quickParse('#if 0', 'CBS')).toBe('0  9')
     expect(quickParse('#if false', 'CBS')).toBe('0  9')
 
+    // Edge case: {{#if \s+1}} does not render
+    expect(quickParse('#if  1', 'CBS')).toBe(`0  9`)
+    expect(quickParse('#if   true', 'CBS')).toBe(`0  9`)
+
     fc.assert(
       fc.property(
-        validCBSArgProp.filter((s) => s !== '1' && s !== 'true'),
+        validCBSArgProp.filter((s) => !/^1|(?:true)\s*/.test(s)),
         (anythingElse) => {
           expect(quickParse(`#if ${anythingElse}`, 'CBS')).toBe(`0  9`)
         }
-      )
+      ),
     )
   })
 
@@ -118,19 +129,34 @@ describe('#if_pure', () => {
   test('renders when "1" or "true"', () => {
     expect(quickParse('#if_pure 1', 'CBS')).toBe(`0 CBS 9`)
     expect(quickParse('#if_pure true', 'CBS')).toBe(`0 CBS 9`)
+
+    // Edge case: {{#if_pure 1\s+.*}} also renders
+    fc.assert(
+      fc.property(
+        fc.constantFrom('1', 'true'),
+        fc.stringMatching(/^ +[^#:{}\r\n]*$/),
+        (truthy, tail) => {
+          expect(quickParse(`#if_pure ${truthy}${tail}`, 'CBS')).toBe(`0 CBS 9`)
+        }
+      ),
+    )
   })
 
   test('does not render when anything else', async () => {
     expect(quickParse('#if_pure 0', 'CBS')).toBe('0  9')
     expect(quickParse('#if_pure false', 'CBS')).toBe('0  9')
 
+    // Edge case: {{#if_pure \s+1}} does not render
+    expect(quickParse('#if_pure  1', 'CBS')).toBe(`0  9`)
+    expect(quickParse('#if_pure   true', 'CBS')).toBe(`0  9`)
+
     fc.assert(
       fc.property(
-        validCBSArgProp.filter((s) => s !== '1' && s !== 'true'),
+        validCBSArgProp.filter((s) => !/^1|(?:true)\s*/.test(s)),
         (anythingElse) => {
           expect(quickParse(`#if_pure ${anythingElse}`, 'CBS')).toBe(`0  9`)
         }
-      )
+      ),
     )
   })
 
