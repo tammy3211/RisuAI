@@ -371,11 +371,6 @@ export async function saveRefToContainer(
   itemPointer: string,
   sourceMap: Record<string, string>
 ): Promise<void> {
-  // return if __source array is missing or empty
-  if (!itemData || !Array.isArray(itemData.__source) || itemData.__source.length === 0) {
-    return;
-  }
-
   // 1. Find container file (traverse upwards)
   let parentPointer = itemPointer;
   let containerFile = '';
@@ -415,7 +410,26 @@ export async function saveRefToContainer(
     wrapperPrefix = '/data';
   }
 
-  // 5. Set $ref for each entry in __source array
+  // 5. __source가 비어있으면 inline 데이터로 교체
+  if (!itemData || !Array.isArray(itemData.__source) || itemData.__source.length === 0) {
+    // Calculate relative path within container
+    const relativePath = wrapperPrefix + baseRelativePath;
+    
+    // $ref 대신 실제 데이터를 inline으로 저장
+    const inlineData = { ...itemData };
+    delete inlineData.__source;  // 메타데이터 제거
+    
+    setValueByPath(containerData, relativePath, inlineData);
+    
+    // sourceMap에서 관련 항목 제거
+    const keysToDelete = Object.keys(sourceMap).filter(key => key.startsWith(itemPointer + '/'));
+    keysToDelete.forEach(key => delete sourceMap[key]);
+    
+    await writeJson(folderName, containerFile, containerData);
+    return;
+  }
+
+  // 6. Set $ref for each entry in __source array
   for (const sourceEntry of itemData.__source) {
     const { key, path } = sourceEntry;
     

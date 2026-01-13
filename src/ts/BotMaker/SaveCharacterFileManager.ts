@@ -38,7 +38,7 @@ export async function overwriteAllToFiles(
   };
   removeBookVersion(charToSave);
 
-  // 1단계: __source가 있는 배열 아이템들 먼저 처리
+  // 1단계: globalLore, customscript만 __source 기반 처리
   if (charToSave.globalLore && Array.isArray(charToSave.globalLore)) {
     for (let i = 0; i < charToSave.globalLore.length; i++) {
       const item = charToSave.globalLore[i];
@@ -57,7 +57,7 @@ export async function overwriteAllToFiles(
     }
   }
 
-  // 2단계: 재귀적으로 모든 필드 저장
+  // 2단계: 재귀적으로 모든 필드 저장 (sourceMap 기반)
   await saveAllFieldsRecursively(folderName, charToSave, '', sourceMap);
 }
 
@@ -78,7 +78,19 @@ async function saveAllFieldsRecursively(
 
   // 배열 처리
   if (Array.isArray(data)) {
-    // 배열 자체를 저장 (부모 경로에서)
+    // sourceMap에 이 배열의 하위 항목이 있으면 $ref 구조이므로 스킵
+    if (currentPath) {
+      const hasRefStructure = Object.keys(sourceMap).some(key => 
+        key.startsWith(currentPath + '/')
+      );
+      
+      if (hasRefStructure) {
+        // sourceMap에 하위 경로 있음 → $ref 구조 유지
+        return;
+      }
+    }
+
+    // sourceMap에 없으면 일반 배열이므로 저장
     if (currentPath) {
       await saveFieldByPath(folderName, currentPath, data, sourceMap);
     }
@@ -98,19 +110,18 @@ async function saveAllFieldsRecursively(
   const keys = Object.keys(data);
 
   for (const key of keys) {
-    // __source, __sourcePath 등 내부 메타데이터는 스킵
+    // __source 등 내부 메타데이터는 스킵
     if (key.startsWith('__')) continue;
 
-    // __source 배열에 정의된 필드는 스킵 ($ref로 이미 처리됨)
-    if (sourceKeys.has(key)) {
+    // globalLore, customscript만 __source 체크 (나머지는 sourceMap 기반)
+    if ((currentPath === '' && (key === 'globalLore' || key === 'customscript')) && sourceKeys.has(key)) {
       continue;
     }
 
     const value = data[key];
     const fieldPath = currentPath ? `${currentPath}/${key}` : `/${key}`;
 
-    // globalLore, customscript는 1단계에서 이미 처리됨 (saveRefToContainer)
-    // 여기서 다시 처리하면 $ref가 실제 데이터로 덮어씌워짐
+    // globalLore, customscript는 1단계에서 이미 처리됨
     if (fieldPath === '/globalLore' || fieldPath === '/customscript') {
       continue;
     }
@@ -164,7 +175,8 @@ export async function saveChangesToFiles(
     if (currentData.globalLore && Array.isArray(currentData.globalLore)) {
       for (let i = 0; i < currentData.globalLore.length; i++) {
         const item = currentData.globalLore[i];
-        if (item && typeof item === 'object' && '__source' in item) {
+        // __source 배열이 있거나 비어있는 모든 항목 처리 (빈 배열도 포함)
+        if (item && typeof item === 'object') {
           await saveRefToContainer(folderName, item, `/globalLore/${i}`, sourceMap);
         }
       }
@@ -174,7 +186,8 @@ export async function saveChangesToFiles(
     if (currentData.customscript && Array.isArray(currentData.customscript)) {
       for (let i = 0; i < currentData.customscript.length; i++) {
         const item = currentData.customscript[i];
-        if (item && typeof item === 'object' && '__source' in item) {
+        // __source 배열이 있거나 비어있는 모든 항목 처리 (빈 배열도 포함)
+        if (item && typeof item === 'object') {
           await saveRefToContainer(folderName, item, `/customscript/${i}`, sourceMap);
         }
       }
@@ -198,7 +211,7 @@ export async function saveChangesToFiles(
     // 값 가져오기
     const newValue = getValueByPath(currentData, jsonPointer);
 
-    // globalLore, customscript 특별 처리
+    // globalLore, customscript 특별 처리 (__source 기반)
     if (jsonPointer.startsWith('/globalLore')) {
       await writeLorebook(folderName, jsonPointer, newValue, sourceMap);
       continue;
@@ -209,7 +222,7 @@ export async function saveChangesToFiles(
       continue;
     }
 
-    // 나머지는 saveFieldByPath 활용
+    // 나머지는 saveFieldByPath (sourceMap 기반)
     await saveFieldByPath(folderName, jsonPointer, newValue, sourceMap);
   }
 }
