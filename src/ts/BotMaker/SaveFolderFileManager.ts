@@ -18,15 +18,60 @@ export function addCacheBuster(url: string): string {
  * @param refPath $ref path (relative or absolute)
  * @param currentFileUrl current file URL
  * @param rootUrl root URL
+ * @param folderName folder name for search fallback
  * @returns resolved absolute URL
  */
-export function resolveRefPath(refPath: string, currentFileUrl: string, rootUrl: string): string {
-  if (refPath.startsWith('./') || refPath.startsWith('../')) {
-    // relative path - based on container file
-    const parentDir = currentFileUrl.substring(0, currentFileUrl.lastIndexOf('/') + 1);
-    const resolvedUrlObj = new URL(refPath, "http://dummy" + parentDir);
-    return resolvedUrlObj.pathname;
-  } else {
+export async function resolveRefPath(
+  refPath: string, 
+  currentFileUrl: string, 
+  rootUrl: string,
+  folderName?: string
+): Promise<string> {
+  try {
+    let resolvedPath: string;
+    
+    if (refPath.startsWith('./') || refPath.startsWith('../')) {
+      // relative path - based on container file
+      const parentDir = currentFileUrl.substring(0, currentFileUrl.lastIndexOf('/') + 1);
+      const resolvedUrlObj = new URL(refPath, "http://dummy" + parentDir);
+      resolvedPath = resolvedUrlObj.pathname;
+    } else {
+      resolvedPath = rootUrl + refPath;
+    }
+    
+    // 경로 유효성 확인 (fetch로 체크)
+    const testUrl = addCacheBuster(resolvedPath);
+    const testRes = await fetch(testUrl);
+    
+    if (testRes.ok) {
+      return resolvedPath;
+    }
+    
+    // 파일을 찾지 못한 경우: 파일명으로 검색
+    if (folderName) {
+      const fileName = refPath.substring(refPath.lastIndexOf('/') + 1);
+      console.warn(`[resolveRefPath] File not found: ${resolvedPath}, searching for: ${fileName}`);
+      
+      const searchUrl = `/api/save/${folderName}/search/${encodeURIComponent(fileName)}`;
+      const searchRes = await fetch(searchUrl);
+      
+      if (searchRes.ok) {
+        const searchData = await searchRes.json();
+        
+        if (searchData.found && searchData.path) {
+          const newPath = rootUrl + searchData.path;
+          console.log(`[resolveRefPath] Found file at: ${newPath}`);
+          return newPath;
+        }
+      }
+    }
+    
+    // 검색 실패 시 원래 경로 반환 및 에러 출력
+    console.error(`[resolveRefPath] Failed to resolve path: ${refPath} (resolved to: ${resolvedPath})`);
+    return resolvedPath;
+    
+  } catch (error) {
+    console.error(`[resolveRefPath] Error resolving path: ${refPath}`, error);
     return rootUrl + refPath;
   }
 }

@@ -36,7 +36,8 @@ async function recursiveTraverse(
   currentPointer: string,
   currentFileUrl: string,
   sourceMap: SourceMap,
-  rootUrl: string
+  rootUrl: string,
+  folderName: string
 ): Promise<any> {
   if (typeof obj !== 'object' || obj === null) return obj;
 
@@ -50,8 +51,8 @@ async function recursiveTraverse(
     if (val && typeof val === 'object' && typeof val['$ref'] === 'string') {
       const refPath = val['$ref'];
 
-      // URL 해결: 절대/상대 경로 모두 처리
-      const resolvedUrl = resolveRefPath(refPath, currentFileUrl, rootUrl);
+      // URL 해결: 절대/상대 경로 모두 처리 (검색 기능 포함)
+      const resolvedUrl = await resolveRefPath(refPath, currentFileUrl, rootUrl, folderName);
 
       // SourceMap에 기록할 상대 경로 계산
       // rootUrl: /api/save/{Bot}/
@@ -93,10 +94,10 @@ async function recursiveTraverse(
           if (key === 'globalLore' || key === 'customscript') {
             const wrapperType = key === 'globalLore' ? 'risu' : 'regex';
             const converted = convertWrapperToArray(childData, wrapperType);
-            childData = await recursiveTraverse(converted, nextPointer, resolvedUrl, sourceMap, rootUrl);
+            childData = await recursiveTraverse(converted, nextPointer, resolvedUrl, sourceMap, rootUrl, folderName);
           } else {
             // 일반 JSON은 그냥 재귀 탐색
-            childData = await recursiveTraverse(childData, nextPointer, resolvedUrl, sourceMap, rootUrl);
+            childData = await recursiveTraverse(childData, nextPointer, resolvedUrl, sourceMap, rootUrl, folderName);
           }
 
           // 부모가 배열인 경우, 로드된 childData에 __source 추가
@@ -118,7 +119,7 @@ async function recursiveTraverse(
 
     } else {
       // 일반 객체/배열은 현재 파일 컨텍스트 유지하며 재귀 탐색
-      obj[key] = await recursiveTraverse(val, nextPointer, currentFileUrl, sourceMap, rootUrl);
+      obj[key] = await recursiveTraverse(val, nextPointer, currentFileUrl, sourceMap, rootUrl, folderName);
     }
   }
   return obj;
@@ -158,7 +159,8 @@ export async function parseBotJson(folderName: string, options?: { skipFormatUpd
       '',
       virtualEntryUrl,
       sourceMap,
-      rootUrl
+      rootUrl,
+      folderName
     );
 
     // 데이터 변환 및 병합

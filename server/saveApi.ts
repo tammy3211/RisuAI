@@ -253,6 +253,59 @@ export function createSaveApiHandler(): Connect.NextHandleFunction {
         return;
       }
 
+      // GET /api/save/:folderName/search/:fileName - 파일명으로 파일 검색
+      const searchMatch = pathname.match(/^\/api\/save\/([^/]+)\/search\/(.+)$/);
+      if (searchMatch && req.method === 'GET') {
+        const folderName = decodeURIComponent(searchMatch[1]);
+        const fileName = decodeURIComponent(searchMatch[2]);
+        const folderPath = path.join(SAVE_DIR, folderName);
+        
+        // 보안: SAVE_DIR 밖으로 나가는 경로 차단
+        if (!folderPath.startsWith(SAVE_DIR)) {
+          res.statusCode = 403;
+          res.end(JSON.stringify({ error: 'Access denied' }));
+          return;
+        }
+        
+        if (!(await fs.pathExists(folderPath))) {
+          res.statusCode = 404;
+          res.end(JSON.stringify({ error: 'Folder not found' }));
+          return;
+        }
+        
+        // 재귀적으로 파일 검색
+        async function searchFile(dir: string, target: string): Promise<string | null> {
+          const items = await fs.readdir(dir, { withFileTypes: true });
+          
+          for (const item of items) {
+            const fullPath = path.join(dir, item.name);
+            
+            if (item.isFile() && item.name === target) {
+              // 상대 경로 반환
+              return path.relative(folderPath, fullPath).replace(/\\/g, '/');
+            }
+            
+            if (item.isDirectory()) {
+              const found = await searchFile(fullPath, target);
+              if (found) return found;
+            }
+          }
+          
+          return null;
+        }
+        
+        const foundPath = await searchFile(folderPath, fileName);
+        
+        if (foundPath) {
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ found: true, path: foundPath }));
+        } else {
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ found: false }));
+        }
+        return;
+      }
+
       // POST /api/save/create-from-template - defaultbot 템플릿으로 새 폴더 생성
       if (pathname === '/api/save/create-from-template' && req.method === 'POST') {
         try {
