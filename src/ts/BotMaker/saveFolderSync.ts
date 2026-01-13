@@ -5,6 +5,7 @@ import { overwriteAllToFiles, saveChangesToFiles } from "./SaveCharacterFileMana
 import { selectedCharID } from "../stores.svelte";
 import { isEqual, cloneDeep } from 'lodash';
 import { compare } from 'fast-json-patch';
+import type { SourceMap } from "./MockCharParser";
 
 export const currentSaveFolderBot = writable<{
   character: character,
@@ -78,11 +79,13 @@ function jsonEqual(a: any, b: any): boolean {
   return true;
 }
 
+let previousSourceMap: SourceMap = null;
+
 // 파일 변경 감지 및 자동 리로드
 if (typeof window !== 'undefined') {
   let lastMtime: number | null = null;
   let watchInterval: ReturnType<typeof setInterval> | null = null;
-
+  
   currentSaveFolderBot.subscribe((bot) => {
     if (bot) {
       // Save Folder Bot이 로드되면 파일 워치 시작
@@ -171,7 +174,7 @@ if (typeof window !== 'undefined') {
               removeBookVersion(webDataForCompare);
 
               // 웹 데이터와 파일 데이터가 같으면 카운터 초기화
-              if (currentWebData && jsonEqual(webDataForCompare, fileDataForCompare)) {
+              if (currentWebData && jsonEqual(webDataForCompare, fileDataForCompare) && jsonEqual(previousSourceMap, sourceMap)) {
                 if (reloadPendingCount > 0) {
                   // console.log('[Save Folder Sync] File data matches web data on 2nd check, resetting counter');
                   reloadPendingCount = 0;
@@ -229,6 +232,9 @@ if (typeof window !== 'undefined') {
 
               // 실제 배열에 직접 할당 (Svelte 반응성 트리거)
               DBState.db.characters[0] = character;
+
+              // previousSourceMap 업데이트 (리로드 완료 후)
+              previousSourceMap = cloneDeep(sourceMap);
 
               console.log('[Save Folder Sync] Reloaded successfully');
 
@@ -392,6 +398,7 @@ if (typeof window !== 'undefined') {
                 try {
                   // 변경사항을 파일에 저장
                   await saveChangesToFiles(bot.folderName, changes, currentData, bot.sourceMap);
+                  previousSourceMap = cloneDeep(bot.sourceMap);
                 } finally {
                   // 저장 완료 플래그 해제
                   isSavingToFolder = false;
