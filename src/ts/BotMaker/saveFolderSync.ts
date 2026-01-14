@@ -85,7 +85,7 @@ let previousSourceMap: SourceMap = null;
 if (typeof window !== 'undefined') {
   let lastMtime: number | null = null;
   let watchInterval: ReturnType<typeof setInterval> | null = null;
-  
+
   currentSaveFolderBot.subscribe((bot) => {
     if (bot) {
       // Save Folder Bot이 로드되면 파일 워치 시작
@@ -282,6 +282,8 @@ function findChangedPaths(prev: any, curr: any): string[] {
 // Save 폴더 봇 변경사항 추적 (subscribe 방식)
 if (typeof window !== 'undefined') {
   let previousData: character | null = null;
+  let pendingData: character | null = null; // debounce용 대기 데이터
+  let pending: boolean = false;
   let checkInterval: ReturnType<typeof setInterval> | null = null;
 
   currentSaveFolderBot.subscribe((currentBot) => {
@@ -292,6 +294,7 @@ if (typeof window !== 'undefined') {
       if (currentBot.isDirty === false) {
         // Proxy를 벗겨낸 순수 객체로 저장해 참조 공유를 방지한다.
         previousData = structuredClone(currentBot.character);
+        pendingData = null;
       }
 
 
@@ -346,69 +349,57 @@ if (typeof window !== 'undefined') {
             if (currentData.type === 'group') return;
 
             if (previousData) {
-              // chats 배열 비교 디버깅
-              const prevChatsLength = previousData.chats?.length ?? 0;
-              const currChatsLength = currentData.chats?.length ?? 0;
 
-              // console.log(`  - Previous chats: ${JSON.stringify(previousData.chats[previousData.chatPage])}`);
-              // console.log(`  - Current chats: ${JSON.stringify(currentData.chats[currentData.chatPage])}`);
-
-              
               if (jsonEqual(previousData, currentData) === false) {
-                // console.log(`previousData: ${JSON.stringify(previousData.ccAssets)}`);
-                // console.log(`currentData: ${JSON.stringify(currentData.ccAssets)}`);
-
                 isSavingFile = 6;
-
-                /* chat diff debug
-                if (prevChatsLength !== currChatsLength) {
-                  console.log('[Save Folder Bot DEBUG] CHATS ARRAY LENGTH CHANGED:');
-                  console.log(`  - Previous length: ${prevChatsLength}`);
-                  console.log(`  - Current length: ${currChatsLength}`);
-                  console.log(`  - Previous chats:`, previousData.chats?.map(c => ({ name: c.name, id: c.id })));
-                  console.log(`  - Current chats:`, currentData.chats?.map(c => ({ name: c.name, id: c.id })));
+                if (jsonEqual(pendingData, currentData) === false) {
+                  pendingData = structuredClone(currentData);
+                  pending = true;
+                } 
+                else {
+                  pending = false;
                 }
-                */
-              } else {
-                //console.log('[Save Folder Bot] No change');
+
+                if (pending) {
+                  return;
+                }
               }
 
-              const changes = findChangedPaths(previousData, currentData);
+              // pendingData가 있으면 debounce 체크
+              if (pendingData !== null) {
+                // pendingData와 currentData가 같으면 → 저장
+                if (jsonEqual(pendingData, currentData)) {
+                  const changes = findChangedPaths(previousData, pendingData);
 
-              // 항상 ccAssets 상태 출력
-              // console.log(`[ccAssets] Previous ccAssets (length=${previousData.ccAssets?.length ?? 0}):`, previousData.ccAssets);
-              // console.log(`[ccAssets] Current ccAssets (length=${currentData.ccAssets?.length ?? 0}):`, currentData.ccAssets);
+                  if (changes.length > 0) {
+                    // console.log('[Save Folder Bot] Changes detected:', changes.length, 'change(s)');
+                    changes.forEach(change => console.log('  -', change));
 
-              if (changes.length > 0) {
-                // console.log('[Save Folder Bot] Changes detected:', changes.length, 'change(s)');
-                changes.forEach(change => console.log('  -', change));
+                    // 저장 시작 플래그 설정
+                    isSavingToFolder = true;
 
-                if (currentData.globalLore && Array.isArray(currentData.globalLore)) {
-                  // globalLore changes - will be handled
-                } else if (currentData.globalLore && typeof currentData.globalLore === 'object') {
-                  console.warn('[Save Folder Bot] globalLore is object (not array) - unexpected');
-                  if ('__source' in currentData.globalLore) {
-                    // console.log('[Save Folder Bot]   globalLore.__source:', currentData.globalLore.__source);
+                    try {
+                      // 변경사항을 파일에 저장
+                      await saveChangesToFiles(bot.folderName, changes, pendingData, bot.sourceMap);
+                      previousSourceMap = cloneDeep(bot.sourceMap);
+
+                      // 저장 완료 후 previousData 업데이트
+                      previousData = structuredClone(pendingData);
+                    } finally {
+                      // 저장 완료 플래그 해제
+                      isSavingToFolder = false;
+                      // console.log('[Save Folder Bot] Save completed, resuming change detection');
+                    }
                   }
-                }
 
-                // 저장 시작 플래그 설정
-                isSavingToFolder = true;
-
-                try {
-                  // 변경사항을 파일에 저장
-                  await saveChangesToFiles(bot.folderName, changes, currentData, bot.sourceMap);
-                  previousSourceMap = cloneDeep(bot.sourceMap);
-                } finally {
-                  // 저장 완료 플래그 해제
-                  isSavingToFolder = false;
-                  // console.log('[Save Folder Bot] Save completed, resuming change detection');
+                  // debounce 상태 초기화
+                  pendingData = null;
+                } else {
+                  // pendingData와 currentData가 다르면 → 추가 변경 발생
+                  pendingData = structuredClone(currentData);
                 }
               }
             }
-
-            // 현재 상태를 이전 상태로 저장 (Proxy를 벗긴 스냅샷)
-            previousData = structuredClone(currentData);
           });
         }, 500); // 0.5초마다 체크
       }
@@ -420,6 +411,7 @@ if (typeof window !== 'undefined') {
         checkInterval = null;
       }
       previousData = null;
+      pendingData = null;
     }
   });
 }
