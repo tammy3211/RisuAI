@@ -17,7 +17,7 @@ import { setDatabase, type Database, defaultSdDataFunc, getDatabase, appVer, get
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { checkRisuUpdate } from "./update";
 import { MobileGUI, botMakerMode, selectedCharID, loadedStore, DBState, LoadingStatusState, selIdState, ReloadGUIPointer } from "./stores.svelte";
-import { loadPlugins } from "./plugins/plugins";
+import { loadPlugins } from "./plugins/plugins.svelte";
 import { alertConfirm, alertError, alertMd, alertNormal, alertNormalWait, alertSelect, alertTOS, waitAlert } from "./alert";
 import { checkDriverInit, syncDrive } from "./drive/drive";
 import { hasher } from "./parser.svelte";
@@ -710,7 +710,6 @@ export async function globalFetch(url: string, arg: GlobalFetchArgs = {}): Promi
     try {
         const db = getDatabase();
         const method = arg.method ?? "POST";
-        db.requestmet = "normal";
 
         if (arg.abortSignal?.aborted) { return { ok: false, data: 'aborted', headers: {}, status: 400 }; }
 
