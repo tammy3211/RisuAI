@@ -13,7 +13,9 @@
     "globals": [
       "onOutput",
       "onInput",
-      "onStart"
+      "onStart",
+      "Promise",
+      "throw"
     ]
   }
 }
