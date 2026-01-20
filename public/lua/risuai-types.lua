@@ -194,7 +194,7 @@ function removeChat(id, index) end
 
 ---Add chat message
 ---@param id string
----@param role string
+---@param role 'user'|'char'
 ---@param value string
 function addChat(id, role, value) end
 
