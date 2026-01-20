@@ -14,6 +14,7 @@
       "onOutput",
       "onInput",
       "onStart",
+      "onButtonClick",
       "Promise",
       "throw"
     ]
