@@ -923,7 +923,6 @@ export interface Database{
     gptVisionQuality:string
     reverseProxyOobaMode:boolean
     reverseProxyOobaArgs: OobaChatCompletionRequestParams
-    tpo?:boolean
     huggingfaceKey:string
     fishSpeechKey:string
     allowAllExtentionFiles?:boolean
@@ -1233,7 +1232,7 @@ export interface character{
     chats:Chat[]
     chatFolders: ChatFolder[]
     chatPage: number
-    viewScreen: 'emotion'|'none'|'imggen'|'vn',
+    viewScreen: 'emotion'|'none'|'imggen',
     bias: [string, number][]
     emotionImages: [string, string][]
     globalLore: loreBook[]
