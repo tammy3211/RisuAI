@@ -23,6 +23,7 @@
     import AutoresizeArea from "../UI/GUI/TextAreaResizable.svelte"
     import ChatBody from './ChatBody.svelte'
     import PopupButton from "../UI/PopupButton.svelte";
+    import PartialEditController from './PartialEditController.svelte';
 
     let translating = $state(false)
     let editMode = $state(false)
@@ -75,6 +76,7 @@
 
     let msgDisplay = $state('')
     let translated = $state(false)
+    let partialEditEnabled = $state(true)
 
     async function rm(e:MouseEvent, rec?:boolean){
         if(e.shiftKey){
@@ -107,6 +109,14 @@
 
     async function edit(){
         DBState.db.characters[selIdState.selId].chats[DBState.db.characters[selIdState.selId].chatPage].message[idx].data = message
+    }
+
+    function handlePartialEditSave(e: CustomEvent<{ newData: string }>) {
+        if (idx >= 0) {
+            message = e.detail.newData
+            DBState.db.characters[selIdState.selId].chats[DBState.db.characters[selIdState.selId].chatPage].message[idx].data = e.detail.newData
+            displaya(e.detail.newData)
+        }
     }
 
     function getCbsCondition(){
@@ -240,7 +250,7 @@
             chat.bookmarks.push(messageId);
 
             const msgSender = chat.message[idx]?.role === 'user' ? getUserName() : name;
-            const newName= await alertInput(language.bookmarkAskNameOrDefault);
+            const newName= await alertInput(language.bookmarkAskNameOrDefault, [], chat.bookmarkNames[messageId] || '');
 
             if (newName && newName.trim() !== '') {
                 chat.bookmarkNames[messageId] = newName;
@@ -370,6 +380,16 @@
                     bind:translating={translating}
                     bind:retranslate={retranslate} />
             {/key}
+            {#if idx >= 0 && !editMode && partialEditEnabled && (DBState.db.enableBlockPartialEdit || DBState.db.enableDragPartialEdit)}
+                <PartialEditController
+                    messageData={message}
+                    chatIndex={idx}
+                    {bodyRoot}
+                    blockEditEnabled={DBState.db.enableBlockPartialEdit}
+                    dragEditEnabled={DBState.db.enableDragPartialEdit}
+                    on:save={handlePartialEditSave}
+                />
+            {/if}
         </span>
     {/if}
 {/snippet}

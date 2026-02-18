@@ -389,8 +389,23 @@ export async function requestClaude(arg:RequestDataArgumentExtended):Promise<req
         const stream = false;   // todo?
 
         // https://docs.claude.com/en/api/claude-on-amazon-bedrock#global-vs-regional-endpoints
+        let useGlobal = false;
+        
         const datePart = Number(arg.modelInfo.internalID.match(/(\d{8})/)?.[0]);
-        const awsModel = datePart && datePart >= 20250929 ? "global." + arg.modelInfo.internalID : "us." + arg.modelInfo.internalID;
+        const versionMatch = arg.modelInfo.internalID.match(/claude-(?:opus-|sonnet-|haiku-)?(\d+)-(\d+)/);
+
+        if (datePart && !isNaN(datePart)) {
+            useGlobal = datePart >= 20250929;
+        } else if (versionMatch) {
+            const majorVersion = Number(versionMatch[1]);
+            const minorVersion = Number(versionMatch[2]);
+            useGlobal = (majorVersion > 4) || (majorVersion === 4 && minorVersion >= 5);
+        }
+
+        const awsModel = useGlobal 
+            ? "global." + arg.modelInfo.internalID 
+            : "us." + arg.modelInfo.internalID;
+
         const url = `https://${host}/model/${awsModel}/invoke${stream ? "-with-response-stream" : ""}`
 
         let params = {...body}
@@ -442,7 +457,8 @@ export async function requestClaude(arg:RequestDataArgumentExtended):Promise<req
             body: params,
             headers: signed.headers,
             plainFetchForce: true,
-            chatId: arg.chatId
+            chatId: arg.chatId,
+            interceptor: 'anthropic_bedrock'
         })
 
         if(!res.ok){
@@ -568,7 +584,8 @@ export async function requestClaude(arg:RequestDataArgumentExtended):Promise<req
             }),
             "method": "POST",
             signal: arg.abortSignal,
-            headers: headers
+            headers: headers,
+            interceptor: 'anthropic_batching'
         })
 
         if(resp.status !== 200){
@@ -608,6 +625,7 @@ export async function requestClaude(arg:RequestDataArgumentExtended):Promise<req
                         "anthropic-version": "2023-06-01",
                     },
                     "signal": arg.abortSignal,
+                    "interceptor": 'anthropic_batching_status'
                 })
 
                 if(statusRes.status !== 200){
@@ -630,6 +648,7 @@ export async function requestClaude(arg:RequestDataArgumentExtended):Promise<req
                         "anthropic-version": "2023-06-01",
                     },
                     "signal": arg.abortSignal,
+                    "interceptor": 'anthropic_batching_results'
                 })
 
                 if(batchRes.status !== 200){
@@ -689,7 +708,9 @@ async function requestClaudeHTTP(replacerURL:string, headers:{[key:string]:strin
             body: JSON.stringify(body),
             headers: headers,
             method: "POST",
-            chatId: arg.chatId
+            chatId: arg.chatId,
+            signal: arg.abortSignal,
+            interceptor: 'anthropic_streaming'
         })
 
         if(res.status !== 200){
@@ -785,7 +806,9 @@ async function requestClaudeHTTP(replacerURL:string, headers:{[key:string]:strin
                                         body: JSON.stringify(body),
                                         headers: headers,
                                         method: "POST",
-                                        chatId: arg.chatId
+                                        chatId: arg.chatId,
+                                        signal: arg.abortSignal,
+                                        interceptor: 'anthropic_streaming_retry'
                                     })
                             
                                     if(res.status !== 200){
@@ -830,7 +853,8 @@ async function requestClaudeHTTP(replacerURL:string, headers:{[key:string]:strin
         body: body,
         headers: headers,
         method: "POST",
-        chatId: arg.chatId
+        chatId: arg.chatId,
+        interceptor: 'anthropic_http'
     })
 
     if(!res.ok){
