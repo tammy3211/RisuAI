@@ -1,15 +1,16 @@
 import { fetchNative, textifyReadableStream } from "src/ts/globalApi.svelte"
-import { language } from "src/lang"
 import { LLMFlags, LLMFormat } from "src/ts/model/modellist"
 import { getDatabase, setDatabase } from "src/ts/storage/database.svelte"
 import { simplifySchema } from "src/ts/util"
 import { v4 } from "uuid"
 import { setInlayAsset, writeInlayImage } from "../files/inlays"
 import { extractJSON, getGeneralJSONSchema } from "../templates/jsonSchema"
-import { applyParameters, type Parameter, type RequestDataArgumentExtended, type requestDataResponse, type StreamResponseChunk } from "./request"
 import { callTool, decodeToolCall, encodeToolCall } from "../mcp/mcp"
-import { alertError, alertNormal, alertWait, showHypaV2Alert } from "src/ts/alert";
+import { alertError } from "src/ts/alert";
 import { addFetchLog } from "src/ts/globalApi.svelte"
+import type { RequestDataArgumentExtended, requestDataResponse, StreamResponseChunk } from './request'
+import { applyParameters, type LLMParameter } from './shared'
+import { bodyIntercepterStore } from "src/ts/stores.svelte"
 
 type GeminiFunctionCall = {
     id?: string;
@@ -300,7 +301,7 @@ export async function requestGoogleCloudVertex(arg:RequestDataArgumentExtended):
         }
     }
 
-    let para:Parameter[] = ['temperature', 'top_p', 'top_k', 'presence_penalty', 'frequency_penalty']
+    let para:LLMParameter[] = ['temperature', 'top_p', 'top_k', 'presence_penalty', 'frequency_penalty']
 
     if(arg.modelInfo.flags.includes(LLMFlags.geminiThinking)){
         para.push('thinking_tokens')
@@ -321,7 +322,8 @@ export async function requestGoogleCloudVertex(arg:RequestDataArgumentExtended):
             'frequency_penalty': "frequencyPenalty",
             'thinking_tokens': "thinkingBudget"
         }, arg.mode, {
-            ignoreTopKIfZero: true
+            ignoreTopKIfZero: true,
+            modelId: arg.modelInfo.id
         }),
         safetySettings: uncensoredCatagory,
         systemInstruction: {
@@ -394,7 +396,11 @@ export async function requestGoogleCloudVertex(arg:RequestDataArgumentExtended):
             'TEXT', 'IMAGE'
         ]
         arg.useStreaming = false
-    }    let headers:{[key:string]:string} = {}
+    }
+
+    let headers:{[key:string]:string} = {
+        'Content-Type': 'application/json'
+    }
 
     if(db.gptVisionQuality === 'high'){
         body.generation_config.mediaResolution = "MEDIA_RESOLUTION_MEDIUM"
@@ -626,7 +632,6 @@ async function requestGoogle(url:string, body:any, headers:{[key:string]:string}
     }
 
     if((arg.modelInfo.format === LLMFormat.GoogleCloud || arg.modelInfo.format === LLMFormat.VertexAIGemini) && arg.useStreaming){
-        headers['Content-Type'] = 'application/json'
 
         if(arg.previewBody){
             return {
@@ -734,6 +739,22 @@ async function requestGoogle(url:string, body:any, headers:{[key:string]:string}
                     }
                 }
             }   
+        }
+
+        if(data?.usageMetadata){
+            
+            for (const interceptor of bodyIntercepterStore) {
+                try {
+                    await interceptor.callback({
+                        usageMetadata: data.usageMetadata,
+                        modelStatus: data.modelStatus,
+                        promptFeedback: data.promptFeedback
+                    }, 'meta_gemini')
+                }
+                catch (e) {
+                    console.error(e)
+                }
+            }
         }
         return parts
     }
@@ -972,6 +993,13 @@ function getTranStream():TransformStream<Uint8Array, StreamResponseChunk> {
                                 }
                             }
                         }
+
+                        if(jsonData.usageMetadata){
+                            readed['__usageMetadata'] = JSON.stringify(jsonData.usageMetadata)
+                        }
+                        if(jsonData.modelStatus){
+                            readed['__modelStatus'] = JSON.stringify(jsonData.modelStatus)
+                        }
                     } 
                 }
                 control.enqueue(readed)
@@ -1184,6 +1212,15 @@ function wrapToolStream(
                         controller.enqueue({"0": prefix})
                         
                         continue
+                    }
+
+                    for (const interceptor of bodyIntercepterStore) {
+                        try {
+                            await interceptor.callback(value, 'meta_gemini_stream')
+                        }
+                        catch (e) {
+                            console.error(e)
+                        }
                     }
                     return controller.close()
                 }

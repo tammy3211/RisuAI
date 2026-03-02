@@ -181,5 +181,19 @@ export const accessibilitySettingsItems: SettingItem[] = [
         labelKey: 'createFolderOnBranch',
         bindKey: 'createFolderOnBranch',
         keywords: ['create', 'folder', 'branch'],
+    },
+    {
+        id: 'acc.hamburgerButtonBottom',
+        type: 'check',
+        labelKey: 'hamburgerButtonBottom',
+        bindKey: 'hamburgerButtonBottom',
+        keywords: ['hamburger', 'button', 'bottom', 'menu', 'sidebar', 'accessibility'],
+    },
+    {
+        id: 'acc.enableRisuaiProTools',
+        type: 'check',
+        labelKey: 'enableRisuaiProTools',
+        bindKey: 'enableRisuaiProTools',
+        keywords: ['pro', 'tools', 'accessibility'],
     }
 ];

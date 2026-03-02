@@ -3,7 +3,8 @@
  *
  * This file provides TypeScript type definitions for the Risuai Plugin API v3.0.
  * All API methods are accessed through the global `risuai` object.
- *
+ * All API methods that isn't documented here are considered internal or subject to change without deprecation, and should not be used by plugin developers.
+ * 
  * @important **ALL METHODS RETURN PROMISES**
  *
  * Due to the iframe-based sandboxing architecture, ALL method calls go through
@@ -1674,6 +1675,37 @@ interface RisuaiPluginAPI {
      * @returns Standard array of items
      */
     unwarpSafeArray<T>(safeArray: SafeClassArray<T>): Promise<T[]>;
+
+    /**
+     * Searches the LLM translation cache for entries whose key contains the given partial key
+     * @param partialKey - A substring to match against cache keys
+     * @returns Array of matching cache entries with key and value
+     */
+    searchTranslationCache(partialKey: string): Promise<{key: string, value: string}[]>;
+
+    /**
+     * Gets a single entry from the LLM translation cache by exact key
+     * @param key - The exact cache key to look up
+     * @returns The cached translation or null if not found
+     */
+    getTranslationCache(key: string): Promise<string | null>;
+
+    /**
+     * Registers a listener for a named plugin channel (IPC between plugins).
+     * @param channelName - The channel name to listen on (scoped to this plugin)
+     * @param callback - Function to call when a message is received on this channel
+     * @remarks This API is subject to change. API might be changed, deprecated, or removed in the future without prior notice.
+     */
+    addPluginChannelListener(channelName: string, callback: Function): Promise<void>;
+
+    /**
+     * Sends a message to another plugin's named channel (IPC between plugins).
+     * @param pluginName - The internal name of the target plugin
+     * @param channelName - The channel name to post to
+     * @param message - The message payload to send
+     * @remarks This API is subject to change. API might be changed, deprecated, or removed in the future without prior notice.
+     */
+    postPluginChannelMessage(pluginName: string, channelName: string, message: any): Promise<void>;
 }
 
 // ============================================================================
