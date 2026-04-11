@@ -13,7 +13,7 @@ This document serves as a comprehensive guide for AI agents working with the Ris
 Risuai (리수아이), or Risu for short, is a cross-platform AI chatting software/web application built with:
 - **Frontend**: Svelte 5 + TypeScript
 - **Desktop**: Tauri 2.5 (Rust backend)
-- **Build Tool**: Vite 7
+- **Build Tool**: Vite 8
 - **Styling**: Tailwind CSS 4
 - **Package Manager**: pnpm
 
@@ -107,8 +107,9 @@ RisuAI/
 
 ### Building and Running
 
-#### Prerequisites
-- Node.js and pnpm
+### Prerequisites
+
+- Node.js 20.19+ or 22.12+ and pnpm
 - Rust and Cargo (for Tauri builds)
 
 #### Development
@@ -162,6 +163,18 @@ Key stores:
 - `settingsOpen`, `sideBarStore`, `MobileGUI` - UI state
 - `loadedStore`, `alertStore` - Application state
 - `DynamicGUI` - Responsive layout switching
+
+### Styling & Theming
+
+To ensure dynamic theme support across the app, always use the project's custom theme colors defined in `src/styles.css` when styling components with Tailwind CSS. If you need to check how these colors are dynamically managed or view available presets (like dark, light, cherry, etc.), reference `src/ts/gui/colorscheme.ts`. Only inspect this file when specifically working on theme-related logic.
+
+Available custom theme colors include:
+- `textcolor`, `textcolor2`
+- `bgcolor`, `darkbg`, `darkbutton`, `selected`
+- `borderc`, `darkborderc`
+- `draculared`
+
+You can safely apply Tailwind's opacity modifiers directly to these custom theme colors (e.g., `text-textcolor/90`, `bg-textcolor/5`, `border-textcolor/10`).
 
 ### File Naming Conventions
 

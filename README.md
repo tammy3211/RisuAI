@@ -4,7 +4,7 @@
   <img alt="text" src="https://raw.githubusercontent.com/kwaroran/Risuai/refs/heads/main/public/logo_typo_small.avif" width="400"/>
 </picture>
 
-[![Svelte](https://img.shields.io/badge/svelte-5-red?logo=svelte)](https://svelte.dev/) [![Typescript](https://img.shields.io/badge/typescript-5.9-blue?logo=typescript)](https://www.typescriptlang.org/) [![Tauri](https://img.shields.io/badge/tauri-2.5-%2324C8D8?logo=tauri)](https://tauri.app/) [![Vite](https://img.shields.io/badge/vite-7-%23646CFF?logo=vite)](https://vite.dev/) [![Tailwind CSS](https://img.shields.io/badge/tailwindcss-4-%2306B6D4?logo=tailwindcss)](https://tailwindcss.com/)
+[![Svelte](https://img.shields.io/badge/svelte-5-red?logo=svelte)](https://svelte.dev/) [![Typescript](https://img.shields.io/badge/typescript-5.9-blue?logo=typescript)](https://www.typescriptlang.org/) [![Tauri](https://img.shields.io/badge/tauri-2.5-%2324C8D8?logo=tauri)](https://tauri.app/) [![Vite](https://img.shields.io/badge/vite-8-%23646CFF?logo=vite)](https://vite.dev/) [![Tailwind CSS](https://img.shields.io/badge/tailwindcss-4-%2306B6D4?logo=tailwindcss)](https://tailwindcss.com/)
 
 ## ⚠️ Important Notice
 
@@ -220,3 +220,46 @@ pnpm check
 - **[CBS 가이드](public/defaultbot/.docs/curly-braced-syntax(cbs)-guide.md)** - Curly-Braced Syntax 템플릿 시스템
 
 한국어로 변역된 문서는 `.docs/ko/` 하위 디렉토리에서 확인할 수 있습니다.
+## Features
+
+- **Multiple API Supports**: Supports OpenAI, Claude, Gemini, DeepInfra, Ooba, OpenRouter... and More!
+- **Emotion Images**: Display the image of the current character, according to his/her expressions!
+- **Group Chats**: Multiple characters in one chat.
+- **Plugins**: Add your features and providers, and simply share.
+- **Regex Script**: Modify model's output by regex, to make a custom GUI and others
+- **Powerful Translators**: Automatically translate the input/output, so you can roleplay without knowing model's language.
+- **Lorebook**: Also known as world infos or memory book, which can make character memorize more. 
+- **Themes**: Choose it from 3 themes, Classic, WaifuLike, WaifuCut.
+- **Powerful Prompting**: Change the prompting order easily, Impersonate inside prompts, Use conditions, variables... and more!
+- **Customizable, Friendly UI**: Great Accessibility and mobile friendly
+- **TTS**: Use TTS to make the output text into voice.
+- **Additional Assets**: Embed your images, audios and videos to bot, and make it display at chat or background!
+- **Long-term Memory**: Advanced memory systems including HypaMemoryV2/V3 memory compression, SupaMemory for context management to maintain long-term conversation context.
+- And More!
+
+You can get detailed information on https://github.com/kwaroran/Risuai/wiki (Work in Progress)
+
+## Community
+
+- [Discord Server](https://discord.gg/JzP8tB9ZK8)
+
+## Installation
+
+- [Risuai Website](https://risuai.net) (Recommended)
+- [Github Releases](https://github.com/kwaroran/Risuai/releases)
+
+### Development prerequisites
+
+- Node.js 20.19+ or 22.12+
+- pnpm
+
+### Docker Installation
+
+You can also run Risuai using Docker. This method is particularly useful for web hosting.
+
+1. Run the Docker container:
+   ```
+   curl -L https://raw.githubusercontent.com/kwaroran/Risuai/refs/heads/main/docker-compose.yml | docker compose -f - up -d
+   ```
+
+2. Access Risuai at `http://localhost:6001` in your web browser.

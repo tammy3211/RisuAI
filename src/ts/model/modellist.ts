@@ -497,6 +497,18 @@ export const LLMModels: LLMModel[] = [
         'google/gemma-2-27b-it',
         'google/gemma-2-9b-it'
     ]),
+    // NanoGPT — single provider entry; model list fetched on demand via getNanoGPTModels()
+    {
+        id: 'nanogpt',
+        name: 'NanoGPT',
+        fullName: 'NanoGPT',
+        provider: LLMProvider.NanoGPT,
+        format: LLMFormat.NanoGPT,
+        flags: [LLMFlags.hasFullSystemPrompt, LLMFlags.hasImageInput, LLMFlags.hasStreaming, LLMFlags.OAICompletionTokens],
+        parameters: OpenAIParameters,
+        tokenizer: LLMTokenizer.Unknown,
+        recommended: true,
+    },
     // Plugin and Custom API
     {
         id: 'custom',
@@ -555,7 +567,7 @@ for(let i=0; i<LLMModels.length; i++){
             name: `${LLMModels[i].name} Vertex`,
             fullName: `${LLMModels[i].fullName ?? LLMModels[i].name} Vertex`,
             flags: [...LLMModels[i].flags],
-            recommended: false,
+            recommended: !!LLMModels[i].recommended,
             provider: LLMProvider.VertexAI,
             format: LLMFormat.VertexAIGemini
         })
@@ -654,7 +666,6 @@ export async function registerModelDynamic(){
     } catch (error) {
         console.error('Error fetching Anthropic models', error)
     }
-
 
 }
 
@@ -779,7 +790,7 @@ export function getModelList<T extends boolean>(arg:{
     if(arg.groupedByProvider){
         let group: GetModelListGroup[] = []
         for(let model of models){
-            if(model.provider === LLMProvider.AsIs){
+            if(model.provider === LLMProvider.AsIs || model.provider === LLMProvider.NanoGPT){
                 group.push({
                     providerName: '@as-is',
                     models: [model]
