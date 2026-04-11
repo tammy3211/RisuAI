@@ -94,8 +94,7 @@
     "wasmoon": "^1.16.0",
     "wavefile": "^11.0.0",
     "web-streams-polyfill": "^3.3.3",
-    "yaml": "^2.8.2"
-    "web-streams-polyfill": "^3.3.3",
+    "yaml": "^2.8.2",
     "ws": "^8.18.3"
   },
   "devDependencies": {
