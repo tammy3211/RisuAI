@@ -1,6 +1,6 @@
 import pointer from 'json-pointer';
 import { v4 } from 'uuid';
-import { hasher } from '../parser.svelte';
+import { hasher } from '../parser/parser.svelte';
 import { ensureCustomScriptWrapper, ensureLoreBookWrapper, RUNTIME_ONLY_KEYS } from './MockCharacterDB.svelte';
 
 /**
