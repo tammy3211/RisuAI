@@ -19,7 +19,7 @@ import { isTauri, isNodeServer } from "src/ts/platform"
 import { safeStructuredClone } from '../polyfill';
 
 //APP_VERSION_POINT is to locate the app version in the database file for version bumping
-export let appVer = "2026.3.336" //<APP_VERSION_POINT>
+export let appVer = "2026.4.181" //<APP_VERSION_POINT>
 export let webAppSubVer = ''
 
 
@@ -676,6 +676,7 @@ export function setDatabase(data:Database){
     data.keepSessionAlive ??= 'off'
     data.loadouts ??= []
     data.longPressToPopupEditor ??= false
+    data.customSidebarItems ??= []
     changeLanguage(data.language)
 
     setDatabaseLite(data)
@@ -1150,7 +1151,7 @@ export interface Database{
     localActivationInGlobalLorebook: boolean
     showFolderName: boolean
     automaticCachePoint: boolean
-    chatCompression: boolean
+    coldstorage: boolean
     claudeRetrivalCaching: boolean
     outputImageModal: boolean
     playMessageOnTranslateEnd:boolean
@@ -1253,6 +1254,15 @@ export interface Database{
     loadouts: Loadout[]
     disableAprilFools?:boolean
     disableHTMLrendering?:boolean
+    customSidebarItems: CustomSideBarItem[]
+    lastLoadedLoadoutName: string
+}
+
+export interface CustomSideBarItem{
+    id: string
+    type: 'model'|'databaseKey'|'loadout'|'persona'|'preset'|'setting'
+    subType: string
+    label: string
 }
 
 export interface SeparateParameters{
