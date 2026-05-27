@@ -21,6 +21,129 @@ import { overwriteAllToFiles } from './SaveCharacterFileManager';
 import { LuaBundler } from './luabundle';
 import { compare } from 'fast-json-patch';
 
+const LUA_REQUIRE_PATTERNS = [
+  /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+  /\brequire\s*['"]([^'"]+)['"]/g,
+];
+
+function findLuaRequires(code: string): string[] {
+  const requires = new Set<string>();
+
+  for (const pattern of LUA_REQUIRE_PATTERNS) {
+    pattern.lastIndex = 0;
+
+    let match;
+    while ((match = pattern.exec(code)) !== null) {
+      requires.add(match[1]);
+    }
+  }
+
+  return Array.from(requires);
+}
+
+function normalizeLuaPath(path: string): string {
+  return path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+/g, '/');
+}
+
+function joinLuaPath(...parts: string[]): string {
+  return normalizeLuaPath(parts.filter(Boolean).join('/'));
+}
+
+function getLuaDir(path: string): string {
+  const normalized = normalizeLuaPath(path);
+  const lastSlash = normalized.lastIndexOf('/');
+  return lastSlash === -1 ? '' : normalized.substring(0, lastSlash);
+}
+
+function moduleNameToPath(moduleName: string): string {
+  const normalized = normalizeLuaPath(moduleName);
+  const withoutExtension = normalized.endsWith('.lua')
+    ? normalized.substring(0, normalized.length - 4)
+    : normalized;
+
+  return withoutExtension.replace(/\./g, '/');
+}
+
+function modulePathCandidates(rootDir: string, importerDir: string, moduleName: string): string[] {
+  const moduleFile = `${moduleNameToPath(moduleName)}.lua`;
+
+  const rootRelativeModules = moduleName.includes('.') || moduleName.startsWith('/');
+  const candidates = rootRelativeModules
+    ? [
+      joinLuaPath(rootDir, moduleFile),
+      joinLuaPath(importerDir, moduleFile),
+    ]
+    : [
+      joinLuaPath(importerDir, moduleFile),
+      joinLuaPath(rootDir, moduleFile),
+    ];
+
+  return Array.from(new Set(candidates));
+}
+
+async function fetchLuaModule(folderName: string, modulePath: string): Promise<string | null> {
+  const timestamp = Date.now();
+  const moduleUrl = `/api/save/${folderName}/file/${modulePath}?t=${timestamp}`;
+  const response = await fetch(moduleUrl);
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return await response.text();
+}
+
+async function collectLuaModules(
+  folderName: string,
+  rootDir: string,
+  code: string,
+  excludeModules: string[],
+  importerDir = rootDir,
+  customModules: Record<string, string> = {},
+  visitedModules = new Set<string>()
+): Promise<Record<string, string>> {
+  const excludedModules = new Set(excludeModules);
+
+  for (const moduleName of findLuaRequires(code)) {
+    if (excludedModules.has(moduleName) || visitedModules.has(moduleName)) {
+      continue;
+    }
+
+    visitedModules.add(moduleName);
+
+    let loadedModule: { path: string; code: string; } | null = null;
+    for (const modulePath of modulePathCandidates(rootDir, importerDir, moduleName)) {
+      try {
+        const moduleCode = await fetchLuaModule(folderName, modulePath);
+        if (moduleCode !== null) {
+          loadedModule = { path: modulePath, code: moduleCode };
+          break;
+        }
+      } catch (error) {
+        console.warn(`[processLuaBundle] Failed to load module ${moduleName} from ${modulePath}:`, error);
+      }
+    }
+
+    if (!loadedModule) {
+      console.warn(`[processLuaBundle] Module file not found for require("${moduleName}")`);
+      continue;
+    }
+
+    customModules[moduleName] = loadedModule.code;
+    await collectLuaModules(
+      folderName,
+      rootDir,
+      loadedModule.code,
+      excludeModules,
+      getLuaDir(loadedModule.path),
+      customModules,
+      visitedModules
+    );
+  }
+
+  return customModules;
+}
+
 /**
  * Calculate SHA-256 hash of a string (browser-compatible)
  */
@@ -469,7 +592,7 @@ export async function processLuaBundle(
           const moduleName = match[1];
 
           // 표준 모듈(json 등)이 아닌 경우에만 로컬 파일로 간주
-          if (moduleName !== 'json' && !moduleName.startsWith('src/')) {
+          if (moduleName !== 'json' && !moduleName.startsWith('src/') && !moduleName.includes('.')) {
             const modulePath = mainDir ? `${mainDir}/${moduleName}.lua` : `${moduleName}.lua`;
 
             try {
@@ -509,6 +632,14 @@ export async function processLuaBundle(
       }
 
       // 번들링 수행
+      if (actualSourcePath) {
+        const mainDir = getLuaDir(actualSourcePath);
+        Object.assign(
+          customModules,
+          await collectLuaModules(folderName, mainDir, mainCode, excludeModules)
+        );
+      }
+
       const bundleResult = await bundler.bundle({
         code: mainCode,
         customModules: customModules,

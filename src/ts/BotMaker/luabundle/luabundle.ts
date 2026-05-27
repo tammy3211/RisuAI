@@ -44,8 +44,117 @@ export class LuaBundler {
     /**
      * 코드에서 require 호출 찾기
      */
+    private getLongBracketDelimiter(code: string, index: number): { openLength: number; close: string } | null {
+        if (code[index] !== '[') {
+            return null;
+        }
+
+        let cursor = index + 1;
+        while (code[cursor] === '=') {
+            cursor++;
+        }
+
+        if (code[cursor] !== '[') {
+            return null;
+        }
+
+        const equals = code.slice(index + 1, cursor);
+        return {
+            openLength: cursor - index + 1,
+            close: `]${equals}]`
+        };
+    }
+
+    private stripLuaComments(code: string): string {
+        let result = '';
+        let index = 0;
+
+        while (index < code.length) {
+            const char = code[index];
+            const next = code[index + 1];
+
+            if (char === '"' || char === "'") {
+                const quote = char;
+                result += char;
+                index++;
+
+                while (index < code.length) {
+                    const stringChar = code[index];
+                    result += stringChar;
+                    index++;
+
+                    if (stringChar === '\\' && index < code.length) {
+                        result += code[index];
+                        index++;
+                        continue;
+                    }
+
+                    if (stringChar === quote) {
+                        break;
+                    }
+                }
+
+                continue;
+            }
+
+            const longString = this.getLongBracketDelimiter(code, index);
+            if (longString) {
+                const closeIndex = code.indexOf(longString.close, index + longString.openLength);
+                if (closeIndex === -1) {
+                    result += code.slice(index);
+                    break;
+                }
+
+                const endIndex = closeIndex + longString.close.length;
+                result += code.slice(index, endIndex);
+                index = endIndex;
+                continue;
+            }
+
+            if (char === '-' && next === '-') {
+                const commentStart = index + 2;
+                const blockComment = this.getLongBracketDelimiter(code, commentStart);
+
+                if (blockComment) {
+                    const contentStart = commentStart + blockComment.openLength;
+                    const closeIndex = code.indexOf(blockComment.close, contentStart);
+                    const endIndex = closeIndex === -1 ? code.length : closeIndex + blockComment.close.length;
+                    const removed = code.slice(index, endIndex);
+                    result += ` ${removed.match(/\r\n|\r|\n/g)?.join('') ?? ''}`;
+                    index = endIndex;
+                    continue;
+                }
+
+                index += 2;
+                while (index < code.length && code[index] !== '\n' && code[index] !== '\r') {
+                    index++;
+                }
+                continue;
+            }
+
+            result += char;
+            index++;
+        }
+
+        return result;
+    }
+
+    private compactBlankLines(code: string): string {
+        return code
+            .split(/\r?\n/)
+            .map(line => line.trim() ? line : '')
+            .join('\n')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+    }
+
+    private prepareLuaCode(code: string): string {
+        return this.compactBlankLines(this.stripLuaComments(code));
+    }
+
     private analyzeDependencies(code: string): string[] {
         const requires = new Set<string>();
+        const strippedCode = this.stripLuaComments(code);
         
         // 다양한 require 패턴 매칭
         const patterns = [
@@ -57,7 +166,7 @@ export class LuaBundler {
         
         for (const pattern of patterns) {
             let match;
-            while ((match = pattern.exec(code)) !== null) {
+            while ((match = pattern.exec(strippedCode)) !== null) {
                 requires.add(match[1]);
             }
         }
@@ -86,14 +195,15 @@ export class LuaBundler {
         
         // 모듈이 없으면 그냥 반환
         if (moduleEntries.length === 0) {
-            return userCode;
+            return this.prepareLuaCode(userCode);
         }
 
         const moduleDefs = moduleEntries
             .map(([name, code]) => {
+                const strippedCode = this.prepareLuaCode(code);
                 // 모듈이 이미 return을 포함하는지 확인
-                const hasReturn = /\breturn\b/.test(code);
-                const wrappedCode = hasReturn ? code : `${code}\nreturn ${this.extractModuleName(code)}`;
+                const hasReturn = /\breturn\b/.test(strippedCode);
+                const wrappedCode = hasReturn ? strippedCode : `${strippedCode}\nreturn ${this.extractModuleName(strippedCode)}`;
                 
                 return `  __modules['${name}'] = function()
 ${this.indent(wrappedCode, 4)}
@@ -125,8 +235,7 @@ ${this.indent(wrappedCode, 4)}
 
 ${moduleDefs}
 
-  -- User code
-${this.indent(userCode, 2)}
+${this.indent(this.prepareLuaCode(userCode), 2)}
 end`;
     }
 
