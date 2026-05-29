@@ -120,14 +120,25 @@ export class LuaBundler {
                     const closeIndex = code.indexOf(blockComment.close, contentStart);
                     const endIndex = closeIndex === -1 ? code.length : closeIndex + blockComment.close.length;
                     const removed = code.slice(index, endIndex);
+                    if (removed.includes('@diagnostic')) {
+                        result += removed;
+                        index = endIndex;
+                        continue;
+                    }
                     result += ` ${removed.match(/\r\n|\r|\n/g)?.join('') ?? ''}`;
                     index = endIndex;
                     continue;
                 }
 
+                const lineStart = index;
                 index += 2;
                 while (index < code.length && code[index] !== '\n' && code[index] !== '\r') {
                     index++;
+                }
+
+                const removed = code.slice(lineStart, index);
+                if (removed.includes('@diagnostic')) {
+                    result += removed;
                 }
                 continue;
             }
