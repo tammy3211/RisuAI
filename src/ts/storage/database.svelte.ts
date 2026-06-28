@@ -17,9 +17,14 @@ import { createBlankChar } from '../characters';
 import { currentSaveFolderBot } from "../BotMaker/saveFolderSync";
 import { isTauri, isNodeServer } from "src/ts/platform"
 import { safeStructuredClone } from '../polyfill';
+import {
+    DEFAULT_CHAT_LOAD_ADDITIONAL_PAGES,
+    DEFAULT_CHAT_LOAD_INITIAL_PAGES,
+    normalizeChatLoadPages,
+} from '../chatLoadPages';
 
 //APP_VERSION_POINT is to locate the app version in the database file for version bumping
-export let appVer = "2026.4.181" //<APP_VERSION_POINT>
+export let appVer = "2026.6.210" //<APP_VERSION_POINT>
 export let webAppSubVer = ''
 
 
@@ -576,6 +581,7 @@ export function setDatabase(data:Database){
     data.showPromptComparison ??= false
     data.OaiCompAPIKeys ??= {}
     data.reasoningEffort ??= 0
+    data.verbosity ??= 1
     data.hypaV3Presets ??= [
         createHypaV3Preset("Default", {
             summarizationPrompt: data.supaMemoryPrompt ? data.supaMemoryPrompt : "",
@@ -647,6 +653,7 @@ export function setDatabase(data:Database){
     }
     data.customModels ??= []
     data.authRefreshes ??= []
+    data.openAIFlexProcessing ??= false
     data.rememberToolUsage ??= true
     data.simplifiedToolUse ??= false
     data.streamGeminiThoughts ??= false
@@ -674,6 +681,8 @@ export function setDatabase(data:Database){
     data.autoScrollToNewMessage ??= true
     data.alwaysScrollToNewMessage ??= false
     data.newMessageButtonStyle ??= 'bottom-center'
+    data.chatLoadInitialPages = normalizeChatLoadPages(data.chatLoadInitialPages, DEFAULT_CHAT_LOAD_INITIAL_PAGES)
+    data.chatLoadAdditionalPages = normalizeChatLoadPages(data.chatLoadAdditionalPages, DEFAULT_CHAT_LOAD_ADDITIONAL_PAGES)
     data.echoMessage ??= "Echo Message"
     data.echoDelay ??= 0
     if(!isNodeServer && !isTauri){
@@ -691,6 +700,9 @@ export function setDatabase(data:Database){
     data.loadouts ??= []
     data.longPressToPopupEditor ??= false
     data.customSidebarItems ??= []
+    data.moveInsteadOfCopyOnCMPConvert ??= false
+    data.skipSavingAssetsOnWebSync ??= true
+    data.coldstorage ??= data?.plugins?.length === 0
     changeLanguage(data.language)
 
     setDatabaseLite(data)
@@ -802,6 +814,16 @@ export interface DynamicOutput {
     dynamicOutputPrompt: boolean
     showTypingEffect: boolean
     dynamicRequest: boolean
+}
+
+export interface RisuPersona {
+    personaPrompt:string
+    name:string
+    icon:string
+    largePortrait?:boolean
+    id?:string
+    note?:string
+    embeddedModule?:RisuModule
 }
 
 export interface Database{
@@ -957,14 +979,7 @@ export interface Database{
     nanogptUseSubscriptionEndpoint:boolean
     openrouterFallback:boolean
     selectedPersona:number
-    personas:{
-        personaPrompt:string
-        name:string
-        icon:string
-        largePortrait?:boolean
-        id?:string
-        note?:string
-    }[]
+    personas:RisuPersona[]
     personaNote:boolean
     assetWidth:number
     animationSpeed:number
@@ -1031,6 +1046,7 @@ export interface Database{
     sideMenuRerollButton?:boolean
     requestInfoInsideChat?:boolean
     additionalParams:[string, string][]
+    applyAdditionalParamsToAll:boolean
     heightMode:string
     noWaitForTranslate:boolean
     antiClaudeOverload:boolean
@@ -1221,6 +1237,7 @@ export interface Database{
     }[]
     promptInfoInsideChat:boolean
     promptTextInfoInsideChat:boolean
+    openAIFlexProcessing:boolean
     claudeBatching:boolean
     claude1HourCaching:boolean
     rememberToolUsage:boolean
@@ -1260,6 +1277,8 @@ export interface Database{
     autoScrollToNewMessage?: boolean
     alwaysScrollToNewMessage?: boolean
     newMessageButtonStyle?: string
+    chatLoadInitialPages?: number
+    chatLoadAdditionalPages?: number
     pluginDevelopMode?: boolean
     echoMessage?:string
     echoDelay?:number
@@ -1280,6 +1299,8 @@ export interface Database{
     disableHTMLrendering?:boolean
     customSidebarItems: CustomSideBarItem[]
     lastLoadedLoadoutName: string
+    moveInsteadOfCopyOnCMPConvert?:boolean
+    skipSavingAssetsOnWebSync?:boolean
 }
 
 export interface CustomSideBarItem{
@@ -1506,6 +1527,7 @@ export interface character{
     modules?:string[]
     coldstorage?:string
     coldStoragedChats?:string[]
+    customModuleToggle?:string
 }
 
 

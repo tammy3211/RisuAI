@@ -13,7 +13,8 @@ import { v4 as uuidv4, v4 } from 'uuid';
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { get } from "svelte/store";
 import { open } from '@tauri-apps/plugin-shell'
-import { setDatabase, type Database, defaultSdDataFunc, getDatabase, appVer, getCurrentCharacter } from "./storage/database.svelte";
+import streamSaver from 'streamsaver';
+import { setDatabase, type Database, defaultSdDataFunc, getDatabase, appVer, getCurrentCharacter, type character, type groupChat } from "./storage/database.svelte";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { checkRisuUpdate } from "./update";
 import { MobileGUI, botMakerMode, selectedCharID, loadedStore, DBState, LoadingStatusState, selIdState, ReloadGUIPointer, bodyIntercepterStore } from "./stores.svelte";
@@ -39,7 +40,7 @@ import { initMobileGesture } from "./hotkey";
 import { fetch as TauriHTTPFetch } from '@tauri-apps/plugin-http';
 import { moduleUpdate } from "./process/modules";
 import type { AccountStorage } from "./storage/accountStorage";
-import { makeColdData } from "./process/coldstorage.svelte";
+import { getColdStorageItem, makeColdData } from "./process/coldstorage.svelte";
 import { isTauri, isNodeServer } from "./platform";
 import { isLocalNetworkUrl } from "./network/localNetwork";
 import { decodeProxyJobWsChunk, formatProxyStreamErrorMessage, parseProxyJobWsEvent } from "./network/proxyJobWs";
@@ -894,7 +895,7 @@ async function fetchWithTauri(url: string, arg: GlobalFetchArgs): Promise<Global
         addFetchLogInGlobalFetch(data, ok, url, arg, response.status);
         return { ok, data, headers: Object.fromEntries(response.headers), status: response.status };
     } catch (error) {
-
+        return { ok: false, data: `${error}`, headers: {}, status: 400 };
     }
 }
 
@@ -966,14 +967,33 @@ export function getBasename(data: string) {
     return lasts;
 }
 
+export async function getUncleanables(db: Database, uptype: 'basename' | 'pure' = 'basename') {
+    let chars: (character|groupChat)[] = []
+    if (db.characters) {
+        for(let cha of db.characters){
+            if(cha?.coldstorage){
+                const coldData = await getColdStorageItem(cha.coldstorage!)
+                if(coldData.character && coldData.character.chaId === cha.chaId){
+                    cha = coldData.character
+                }
+            }
+            chars.push(cha)
+        }
+    }
+
+    return getUncleanablesSync(db, uptype, { chars });
+}
+
 /**
  * Retrieves uncleanable resources from the database.
  * 
  * @param {Database} db - The database to retrieve uncleanable resources from.
  * @param {'basename'|'pure'} [uptype='basename'] - The type of uncleanable resources to retrieve.
- * @returns {string[]} - An array of uncleanable resources.
+ * @returns {Promise<string[]>} - An array of uncleanable resources.
  */
-export function getUncleanables(db: Database, uptype: 'basename' | 'pure' = 'basename') {
+export function getUncleanablesSync(db: Database, uptype: 'basename' | 'pure' = 'basename', options?:{
+    chars: (character|groupChat)[],
+}) {
     const uncleanable = new Set<string>();
 
     /**
@@ -994,8 +1014,9 @@ export function getUncleanables(db: Database, uptype: 'basename' | 'pure' = 'bas
 
     addUncleanable(db.customBackground);
     addUncleanable(db.userIcon);
+    const chars = options?.chars ?? db.characters
 
-    for (const cha of db.characters) {
+    for (let cha of chars) {
         if (cha.image) {
             addUncleanable(cha.image);
         }
@@ -1033,12 +1054,27 @@ export function getUncleanables(db: Database, uptype: 'basename' | 'pure' = 'bas
                     addUncleanable(asset[1])
                 }
             }
+            if(module.icon){
+                addUncleanable(module.icon)
+            }
         }
     }
 
     if (db.personas) {
         db.personas.map((v) => {
             addUncleanable(v.icon);
+
+            if(v.embeddedModule){
+                const assets = v.embeddedModule.assets
+                if (assets) {
+                    for (const asset of assets) {
+                        addUncleanable(asset[1])
+                    }
+                }
+                if(v.embeddedModule.icon){
+                    addUncleanable(v.embeddedModule.icon)
+                }
+            }
         });
     }
 
@@ -1283,7 +1319,6 @@ export class LocalWriter {
             this.writer = new TauriWriter(filePath)
             return true
         }
-        const streamSaver = await import('streamsaver')
         const writableStream = streamSaver.createWriteStream(name + '.' + ext[0])
         this.writer = writableStream.getWriter()
         return true
@@ -1545,7 +1580,7 @@ async function fetchViaProxyJobWs(url: string, arg: {
     signal?: AbortSignal,
     requestTimeoutMs?: number,
     chatId?: string,
-    fetchLogIndex: number
+    fetchLogIndex?: number | null
 }): Promise<Response> {
     const auth = await getNodeServerProxyAuth();
 
@@ -1608,7 +1643,7 @@ async function fetchViaProxyJobWs(url: string, arg: {
             }
         }
     });
-    const pipedReadable = pipeFetchLog(arg.fetchLogIndex, readable);
+    const pipedReadable = arg.fetchLogIndex != null ? pipeFetchLog(arg.fetchLogIndex, readable) : readable;
 
     const ensureHeadersReady = () => {
         if (!headersReady) {
@@ -1744,6 +1779,7 @@ export async function fetchNative(url: string, arg: {
     useRisuTk?: boolean,
     chatId?: string
     interceptor?: string
+    logFetch?: boolean
     requestTimeoutMs?: number
     networkRoute?: 'auto' | 'local_network'
 }): Promise<Response> {
@@ -1802,15 +1838,19 @@ export async function fetchNative(url: string, arg: {
     }
     const timeoutSignal = buildTimeoutSignal(arg.signal, arg.requestTimeoutMs)
     const requestSignal = timeoutSignal.signal
-    let fetchLogIndex = addFetchLog({
-        body: new TextDecoder().decode(realBody),
-        headers: arg.headers,
-        response: 'Streamed Fetch',
-        success: true,
-        url: url,
-        resType: 'stream',
-        chatId: arg.chatId,
-    })
+    const shouldLogFetch = arg.logFetch ?? true
+    let fetchLogIndex: number | null = null
+    if (shouldLogFetch) {
+        fetchLogIndex = addFetchLog({
+            body: new TextDecoder().decode(realBody),
+            headers: arg.headers,
+            response: 'Streamed Fetch',
+            success: true,
+            url: url,
+            resType: 'stream',
+            chatId: arg.chatId,
+        })
+    }
     try {
         if (window.userScriptFetch && !throughProxy) {
             return await window.userScriptFetch(url, {
@@ -1852,7 +1892,11 @@ export async function fetchNative(url: string, arg: {
                         resolved = true
                     }
                 } catch (e) {
-                    error = JSON.stringify(e)
+                    // Error properties (message/name/stack) are non-enumerable, so
+                    // JSON.stringify(e) returns "{}" and discards the real cause.
+                    error = e instanceof Error
+                        ? (e.message || e.name || 'streamed_fetch parse failed')
+                        : String(e)
                     resolved = true
                 }
             })
@@ -1874,7 +1918,7 @@ export async function fetchNative(url: string, arg: {
         let resHeaders: { [key: string]: string } = null
         let status = 400
 
-        let readableStream = pipeFetchLog(fetchLogIndex, new ReadableStream<Uint8Array>({
+        const tauriReadableStream = new ReadableStream<Uint8Array>({
             async start(controller) {
                 while (!resolved || nativeFetchData[fetchId].length > 0) {
                     if (nativeFetchData[fetchId].length > 0) {
@@ -1895,7 +1939,12 @@ export async function fetchNative(url: string, arg: {
                 }
                 controller.close()
             }
-        }))
+        })
+
+        let readableStream = tauriReadableStream
+        if (shouldLogFetch && fetchLogIndex !== null) {
+            readableStream = pipeFetchLog(fetchLogIndex, tauriReadableStream)
+        }
 
         while (resHeaders === null && !resolved) {
             await sleep(10)
