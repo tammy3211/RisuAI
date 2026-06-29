@@ -312,7 +312,8 @@ end`;
         // 2. 필요한 모듈 수집
         const availableModules = this.moduleRegistry.getModules([
             ...directDeps,
-            ...preloadedModules
+            ...preloadedModules,
+            ...Object.keys(customModules)
         ]);
         
         // 3. 재귀적으로 의존성 해결
