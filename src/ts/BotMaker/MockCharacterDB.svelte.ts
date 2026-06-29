@@ -47,6 +47,7 @@ export interface MockCharacterDB {
   }
   lowLevelAccess?: boolean
   defaultVariables?: string
+  customModuleToggle?: string
   prebuiltAssetCommand?: boolean
   prebuiltAssetExclude?: string[]
   prebuiltAssetStyle?: string
@@ -123,6 +124,7 @@ const CHARACTER_KEYS = [
   'newGenData',
   'lowLevelAccess',
   'defaultVariables',
+  'customModuleToggle',
   'prebuiltAssetCommand',
   'prebuiltAssetExclude',
   'prebuiltAssetStyle',
@@ -174,6 +176,7 @@ export function createMockCharacter(): MockCharacterDB {
     sdData: [],
 
     lowLevelAccess: false,
+    customModuleToggle: "",
     additionalText: "",
 
     // Modules
