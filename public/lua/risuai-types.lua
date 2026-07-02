@@ -3,11 +3,24 @@
 -- RisuAI Lua Scripting API Type Definitions
 -- This file provides type hints for RisuAI's global functions.
 
+---JSON module exposed by RisuAI's Lua runtime.
+---
+---The runtime initializes this global with `json = require 'json'`.
+---@class JsonModule
+---@field _version string Library version string.
+---@field encode fun(value: any): string Encode a Lua value as a JSON string. Errors on sparse arrays, mixed table keys, circular references, unsupported values, NaN, or infinity.
+---@field decode fun(text: string): any Decode a JSON string into Lua values. JSON objects become tables and JSON arrays become sequence tables.
+
+---@type JsonModule
 json = require 'json'
 
+---Promise-like object returned by async RisuAI Lua APIs.
+---
+---Use `:await()` inside an `async(function(...) ... end)` wrapper to read the
+---resolved value.
 ---@class Promise<T>
----@field await fun(self: Promise<T>): T
----@field finally fun(self: Promise<T>, callback: fun()): Promise<T>
+---@field await fun(self: Promise<T>): T Wait for and return the resolved value.
+---@field finally fun(self: Promise<T>, callback: fun()): Promise<T> Run a callback after the promise settles.
 
 Promise = {}
 
@@ -27,25 +40,77 @@ function Promise.resolve(value) end
 ---@return F
 function async(callback) end
 
+---Called when an input trigger runs before sending or processing user input.
+---
+---Return `false` to request that the current send flow stop.
+---@param id string Trigger access id used by RisuAI API functions.
+---@return any
+function onInput(id) end
+
+---Called when an output trigger runs after an assistant/character output exists.
+---
+---Return `false` to request that the current send flow stop.
+---@param id string Trigger access id used by RisuAI API functions.
+---@return any
+function onOutput(id) end
+
+---Called when a start trigger runs at the beginning of a send/generation flow.
+---
+---Return `false` to request that the current send flow stop.
+---@param id string Trigger access id used by RisuAI API functions.
+---@return any
+function onStart(id) end
+
+---Called when an HTML element with `risu-btn` is clicked.
+---
+---The `data` argument is the raw `risu-btn` attribute value.
+---@param id string Trigger access id used by RisuAI API functions.
+---@param data string Button event value.
+---@return any
+function onButtonClick(id, data) end
+
+---Metadata passed to edit listeners.
+---
+---For editDisplay, index is the 0-based chat message index being rendered.
+---For editRequest, editInput, and editOutput, index may be nil depending on the caller.
 ---@class RisuEditMeta
----@field index integer?
+---@field index integer? 0-based chat message index when available.
 
+---Multimodal attachment used by prompt messages.
+---@class RisuMultiModal
+---@field type 'image'|'video'|'audio'|'signature' Attachment kind.
+---@field base64 string Base64-encoded attachment data.
+---@field height number? Media height, when available.
+---@field width number? Media width, when available.
+
+---Single prompt message used by editRequest.
+---
+---This mirrors RisuAI's internal OpenAIChat shape. editRequest receives an
+---array of these objects and should return the modified array.
 ---@class RisuRequestData
----@field role 'system'|'user'|'assistant'|'function'
----@field content string
----@field memo string?
----@field name string?
----@field removable boolean?
----@field attr string[]?
----@field multimodals table[]?
----@field thoughts string[]?
----@field cachePoint boolean?
+---@field role 'system'|'user'|'assistant'|'function' Prompt message role.
+---@field content string Prompt message content.
+---@field memo string? Optional internal memo text.
+---@field name string? Optional message name.
+---@field removable boolean? Whether this prompt item may be removed by later processing.
+---@field attr string[]? Optional prompt attributes.
+---@field multimodals RisuMultiModal[]? Optional multimodal attachments.
+---@field thoughts string[]? Optional thought/tool metadata.
+---@field cachePoint boolean? Whether this message is a cache checkpoint.
 
+---Backward-compatible alias for older scripts.
 ---@class RequestData:RisuRequestData
 
+---editInput listener: receives and returns the user input text.
 ---@alias RisuEditInputCallback fun(id: string, data: string, meta: RisuEditMeta?): string
+
+---editOutput listener: receives and returns the assistant output text.
 ---@alias RisuEditOutputCallback fun(id: string, data: string, meta: RisuEditMeta?): string
+
+---editDisplay listener: receives and returns the text/HTML shown for one chat message.
 ---@alias RisuEditDisplayCallback fun(id: string, data: string, meta: RisuEditMeta?): string
+
+---editRequest listener: receives and returns the full request prompt array.
 ---@alias RisuEditRequestCallback fun(id: string, data: RisuRequestData[], meta: RisuEditMeta?): RisuRequestData[]
 
 ---Listen to edit events.
@@ -123,9 +188,13 @@ function alertSelect(id, value) end
 ---@return Promise<boolean>
 function alertConfirm(id, value) end
 
+---Chat message stored in the current chat history.
+---
+---`getChat` and `getFullChat` return this decoded shape. Use `data` for the
+---message body and `role` to distinguish user messages from character replies.
 ---@class ChatMessage
----@field role 'user'|'char' Message sender role
----@field data string Message content
+---@field role 'user'|'char' Message sender role.
+---@field data string Message content.
 ---@field time number? Optional timestamp.
 
 ---Get chat message as a raw JSON string.
@@ -276,10 +345,12 @@ function getPersonaImage(id) end
 ---@return Promise<string>
 function hash(id, value) end
 
+---Prompt message passed to `LLM` and `axLLM`.
 ---@class LLMPrompt
----@field role 'system'|'user'|'assistant'|'char'|'bot'
----@field content string
+---@field role 'system'|'user'|'assistant'|'char'|'bot' Prompt role.
+---@field content string Prompt text.
 
+---Result returned by `LLM`, `axLLM`, and `simpleLLM`.
 ---@class LLMResult
 ---@field success boolean Whether the LLM call succeeded.
 ---@field result string The LLM response or error message.
@@ -365,6 +436,9 @@ function setBackgroundEmbedding(id, data) end
 ---@return string
 function getLoreBooksMain(id, search) end
 
+---Lorebook entry returned by `getLoreBooks`.
+---
+---This is the raw configured lorebook data for entries matching the search text.
 ---@class LoreBook
 ---@field key string Primary activation key.
 ---@field secondkey string Secondary activation key.
@@ -386,6 +460,7 @@ function getLoreBooksMain(id, search) end
 ---@return LoreBook[]
 function getLoreBooks(id, search) end
 
+---Options used when creating or updating a local lorebook entry.
 ---@class LoreBookOptions
 ---@field alwaysActive boolean? Optional: whether the lore is always active.
 ---@field insertOrder number? Optional: insertion order priority.
@@ -400,6 +475,7 @@ function getLoreBooks(id, search) end
 ---@param options LoreBookOptions
 function upsertLocalLoreBook(id, name, content, options) end
 
+---Lorebook content already selected and loaded for the current request context.
 ---@class LoadedLoreBook
 ---@field data string Parsed lorebook content.
 ---@field role 'user'|'char' Message role for the lorebook entry.
