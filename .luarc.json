@@ -1,13 +1,48 @@
 {
   "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
   "runtime": {
-    "version": "Lua 5.4"
+    "version": "Lua 5.4",
+    "path": [
+      "?.lua",
+      "?/init.lua",
+      "save/*/scripts/triggerscript/?.lua",
+      "save/*/scripts/triggerscript/src/?.lua"
+    ]
   },
   "workspace": {
     "library": [
-      "public/lua"
+      "public/lua",
+      "./save/"
     ],
-    "checkThirdParty": false
+    "checkThirdParty": false,
+    "useGitIgnore": false,
+    "maxPreload": 600,
+    "preloadFileSize": 500,
+    "ignoreDir": [
+      "./.git",
+      "./.github",
+      "./.qoder",
+      "./.svelte-kit",
+      "./.tauri",
+      "./.tool",
+      "./.vscode",
+      "./node_modules",
+      "./dist",
+      "./dist-web",
+      "./dist-ssr",
+      "./build",
+      "./plugins",
+      "./public/defaultbot",
+      "./public/src",
+      "./public/tests",
+      "./resources",
+      "./scripts",
+      "./server",
+      "./src",
+      "./src-tauri",
+      "./save/*/.metadata",
+      "./save/*/assets"
+    ]
   },
   "diagnostics": {
     "globals": [

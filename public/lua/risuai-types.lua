@@ -1,446 +1,399 @@
 ---@meta
 
 -- RisuAI Lua Scripting API Type Definitions
--- This file provides type hints for RisuAI's global functions
+-- This file provides type hints for RisuAI's global functions.
 
 json = require 'json'
 
-local editRequestFuncs = {}
-local editDisplayFuncs = {}
-local editInputFuncs = {}
-local editOutputFuncs = {}
+---@class Promise<T>
+---@field await fun(self: Promise<T>): T
+---@field finally fun(self: Promise<T>, callback: fun()): Promise<T>
 
----@class Promise
----@field await fun(self: Promise): any
+Promise = {}
 
----Internal function to call edit listeners
----@param type 'editInput'|'editOutput'|'editDisplay'|'editRequest'
----@param id string
----@param value string
----@param meta string
-callListenMain = async(function(type, id, value, meta)
-  local realValue = json.decode(value)
-  local realMeta = json.decode(meta)
+---@generic T
+---@param executor fun(resolve: fun(value: T), reject: fun(reason: any))
+---@return Promise<T>
+function Promise.create(executor) end
 
-  if type == 'editRequest' then
-    for _, func in ipairs(editRequestFuncs) do
-      realValue = func(id, realValue, realMeta)
-    end
-  end
+---@generic T
+---@param value T
+---@return Promise<T>
+function Promise.resolve(value) end
 
-  if type == 'editDisplay' then
-    for _, func in ipairs(editDisplayFuncs) do
-      realValue = func(id, realValue, realMeta)
-    end
-  end
+---Create an async wrapper around a coroutine callback.
+---@generic F: function
+---@param callback F
+---@return F
+function async(callback) end
 
-  if type == 'editInput' then
-    for _, func in ipairs(editInputFuncs) do
-      realValue = func(id, realValue, realMeta)
-    end
-  end
+---@class RisuEditMeta
+---@field index integer?
 
-  if type == 'editOutput' then
-    for _, func in ipairs(editOutputFuncs) do
-      realValue = func(id, realValue, realMeta)
-    end
-  end
+---@class RisuRequestData
+---@field role 'system'|'user'|'assistant'|'function'
+---@field content string
+---@field memo string?
+---@field name string?
+---@field removable boolean?
+---@field attr string[]?
+---@field multimodals table[]?
+---@field thoughts string[]?
+---@field cachePoint boolean?
 
-  return json.encode(realValue)
-end)
+---@class RequestData:RisuRequestData
 
----Listen to edit events
+---@alias RisuEditInputCallback fun(id: string, data: string, meta: RisuEditMeta?): string
+---@alias RisuEditOutputCallback fun(id: string, data: string, meta: RisuEditMeta?): string
+---@alias RisuEditDisplayCallback fun(id: string, data: string, meta: RisuEditMeta?): string
+---@alias RisuEditRequestCallback fun(id: string, data: RisuRequestData[], meta: RisuEditMeta?): RisuRequestData[]
+
+---Listen to edit events.
+---@overload fun(type: 'editInput', func: RisuEditInputCallback)
+---@overload fun(type: 'editOutput', func: RisuEditOutputCallback)
+---@overload fun(type: 'editDisplay', func: RisuEditDisplayCallback)
+---@overload fun(type: 'editRequest', func: RisuEditRequestCallback)
 ---@param type 'editInput'|'editOutput'|'editDisplay'|'editRequest'
 ---@param func function
-function listenEdit(type, func)
-  if type == 'editRequest' then
-    editRequestFuncs[#editRequestFuncs + 1] = func
-    return
-  end
+function listenEdit(type, func) end
 
-  if type == 'editDisplay' then
-    editDisplayFuncs[#editDisplayFuncs + 1] = func
-    return
-  end
-
-  if type == 'editInput' then
-    editInputFuncs[#editInputFuncs + 1] = func
-    return
-  end
-
-  if type == 'editOutput' then
-    editOutputFuncs[#editOutputFuncs + 1] = func
-    return
-  end
-
-  throw('Invalid type')
-end
-
----Log a message to console
+---Log a message to console.
 ---@param message string
-function log(message)
-  logMain(json.encode(message))
-end
+function log(message) end
 
----Get state from chat storage
+---Get state from chat storage.
 ---@param id string
 ---@param name string
 ---@return any
-function getState(id, name)
-  local escapedName = "__" .. name
-  return json.decode(getChatVar(id, escapedName))
-end
+function getState(id, name) end
 
----Set state in chat storage
+---Set state in chat storage.
 ---@param id string
 ---@param name string
 ---@param value any
-function setState(id, name, value)
-  local escapedName = "__" .. name
-  setChatVar(id, escapedName, json.encode(value))
-end
+function setState(id, name, value) end
 
----Get chat variable
+---Get chat variable.
 ---@param id string
 ---@param key string
 ---@return string
 function getChatVar(id, key) end
 
----Set chat variable
+---Set chat variable.
 ---@param id string
 ---@param key string
 ---@param value string
 function setChatVar(id, key, value) end
 
----Get global variable
+---Get global variable.
 ---@param id string
 ---@param key string
 ---@return string
 function getGlobalVar(id, key) end
 
----Stop the current chat
+---Stop the current chat.
 ---@param id string
 function stopChat(id) end
 
----Show error alert
+---Show error alert.
 ---@param id string
 ---@param value string
 function alertError(id, value) end
 
----Show normal alert
+---Show normal alert.
 ---@param id string
 ---@param value string
 function alertNormal(id, value) end
 
----Show input alert
+---Show input alert.
 ---@param id string
 ---@param value string
 ---@return Promise<string>
 function alertInput(id, value) end
 
----Show select alert
+---Show select alert.
 ---@param id string
 ---@param value string[]
 ---@return Promise<number>
 function alertSelect(id, value) end
 
----Show confirm alert
+---Show confirm alert.
 ---@param id string
 ---@param value string
 ---@return Promise<boolean>
 function alertConfirm(id, value) end
 
 ---@class ChatMessage
----@field role 'user'|'char'  # Message sender role
----@field data string          # Message content
----@field time number?         # Optional timestamp (always present in getChat, optional in setFullChat)
+---@field role 'user'|'char' Message sender role
+---@field data string Message content
+---@field time number? Optional timestamp.
 
----Get chat message (raw JSON string)
+---Get chat message as a raw JSON string.
 ---@param id string
 ---@param index number
 ---@return string
 function getChatMain(id, index) end
 
----Get chat message (decoded table)
+---Get chat message as a decoded table.
 ---@param id string
 ---@param index number
----@return ChatMessage | nil
-function getChat(id, index)
-  return json.decode(getChatMain(id, index))
-end
+---@return ChatMessage?
+function getChat(id, index) end
 
----Set chat message
+---Set chat message.
 ---@param id string
 ---@param index number
 ---@param value string
 function setChat(id, index, value) end
 
----Set chat role
+---Set chat role.
 ---@param id string
 ---@param index number
 ---@param value string
 function setChatRole(id, index, value) end
 
----Cut chat messages
+---Cut chat messages.
 ---@param id string
 ---@param start number
 ---@param end_ number
 function cutChat(id, start, end_) end
 
----Remove chat message
+---Remove chat message.
 ---@param id string
 ---@param index number
 function removeChat(id, index) end
 
----Add chat message
+---Add chat message.
 ---@param id string
 ---@param role 'user'|'char'
 ---@param value string
 function addChat(id, role, value) end
 
----Insert chat message
+---Insert chat message.
 ---@param id string
 ---@param index number
 ---@param role string
 ---@param value string
 function insertChat(id, index, role, value) end
 
----Get token count
+---Get token count.
 ---@param id string
 ---@param value string
 ---@return Promise<number>
 function getTokens(id, value) end
 
----Get chat length
+---Get chat length.
 ---@param id string
 ---@return number
 function getChatLength(id) end
 
----Get full chat (raw JSON string)
+---Get full chat as a raw JSON string.
 ---@param id string
 ---@return string
 function getFullChatMain(id) end
 
----Get full chat (decoded table)
+---Get full chat as a decoded table.
 ---@param id string
 ---@return ChatMessage[]
-function getFullChat(id)
-  return json.decode(getFullChatMain(id))
-end
+function getFullChat(id) end
 
----Sleep for milliseconds
+---Sleep for milliseconds.
 ---@param id string
 ---@param time number
 function sleep(id, time) end
 
----Parse CBS for (raw JSON string)
+---Parse CBS.
 ---@param id string
 ---@param value string
 function cbs(id, value) end
 
----Set full chat
+---Set full chat from a raw JSON string.
 ---@param id string
 ---@param value string
 function setFullChatMain(id, value) end
 
----Set full chat (from table)
+---Set full chat from a decoded table.
 ---@param id string
 ---@param value ChatMessage[]
-function setFullChat(id, value)
-  setFullChatMain(id, json.encode(value))
-end
+function setFullChat(id, value) end
 
----Log to main console (raw JSON string)
+---Log to main console with a raw JSON string.
 ---@param value string
 function logMain(value) end
 
----Reload display
+---Reload display.
 ---@param id string
 function reloadDisplay(id) end
 
----Reload chat
+---Reload chat.
 ---@param id string
 ---@param index number
 function reloadChat(id, index) end
 
----Calculate text similarity
+---Calculate text similarity.
 ---@param id string
 ---@param source string
 ---@param value string[]
 ---@return Promise<string[]>
 function similarity(id, source, value) end
 
----Make HTTP request
+---Make HTTP request.
 ---@param id string
 ---@param url string
 ---@return Promise<string>
 function request(id, url) end
 
----Generate AI image
+---Generate AI image.
 ---@param id string
 ---@param value string
 ---@param negValue string?
 ---@return Promise<string>
 function generateImage(id, value, negValue) end
 
----Get character image (async, returns promise)
+---Get character image asynchronously.
 ---@param id string
 ---@return Promise<string>
 function getCharacterImageMain(id) end
 
----Get character image (awaited)
+---Get character image.
 ---@param id string
 ---@return string
-function getCharacterImage(id)
-  return getCharacterImageMain(id):await()
-end
+function getCharacterImage(id) end
 
----Get character ima (async, returns promise)
+---Get persona image asynchronously.
 ---@param id string
 ---@return Promise<string>
 function getPersonaImageMain(id) end
 
----Get persona image (awaited)
+---Get persona image.
 ---@param id string
 ---@return string
-function getPersonaImage(id)
-  return getPersonaImageMain(id):await()
-end
+function getPersonaImage(id) end
 
----Get persona image
----@param id string
----@return string
-function getPersonaImageMain(id) end
-
----Hash a string
+---Hash a string.
 ---@param id string
 ---@param value string
 ---@return Promise<string>
 function hash(id, value) end
-
----Call LLM (raw JSON prompt string, async)
----@param id string
----@param promptStr string
----@param useMultimodal boolean?
----@return Promise<string>
-function LLMMain(id, promptStr, useMultimodal) end
 
 ---@class LLMPrompt
 ---@field role 'system'|'user'|'assistant'|'char'|'bot'
 ---@field content string
 
 ---@class LLMResult
----@field success boolean  # Whether the LLM call succeeded
----@field result string    # The LLM response or error message
+---@field success boolean Whether the LLM call succeeded.
+---@field result string The LLM response or error message.
 
----Call LLM (table prompt)
+---Call LLM with a raw JSON prompt string.
+---@param id string
+---@param promptStr string
+---@param useMultimodal boolean?
+---@return Promise<string>
+function LLMMain(id, promptStr, useMultimodal) end
+
+---Call LLM with a decoded prompt table.
 ---@param id string
 ---@param prompt LLMPrompt[]
 ---@param useMultimodal boolean?
 ---@return LLMResult
-function LLM(id, prompt, useMultimodal)
-  useMultimodal = useMultimodal or false
-  return json.decode(LLMMain(id, json.encode(prompt), useMultimodal):await())
-end
+function LLM(id, prompt, useMultimodal) end
 
----Simple LLM call
+---Simple LLM call.
 ---@param id string
 ---@param prompt string
 ---@return Promise<LLMResult>
 function simpleLLM(id, prompt) end
 
----Get character name
+---Get character name.
 ---@param id string
 ---@return string
 function getName(id) end
 
----Set character name
+---Set character name.
 ---@param id string
 ---@param name string
 function setName(id, name) end
 
----Get character description
+---Get character description.
 ---@param id string
 ---@return string
 function getDescription(id) end
 
----Set character description
+---Set character description.
 ---@param id string
 ---@param desc string
 function setDescription(id, desc) end
 
----Get character first message
+---Get character first message.
 ---@param id string
 ---@return string
 function getCharacterFirstMessage(id) end
 
----Set character first message
+---Set character first message.
 ---@param id string
 ---@param data string
 function setCharacterFirstMessage(id, data) end
 
----Get persona name
+---Get persona name.
 ---@param id string
 ---@return string
 function getPersonaName(id) end
 
----Get persona description
+---Get persona description.
 ---@param id string
 ---@return string
 function getPersonaDescription(id) end
 
----Get author's note
+---Get author's note.
 ---@param id string
 ---@return string
 function getAuthorsNote(id) end
 
----Get background embedding
+---Get background embedding.
 ---@param id string
 ---@return string
 function getBackgroundEmbedding(id) end
 
----Set background embedding
+---Set background embedding.
 ---@param id string
 ---@param data string
 function setBackgroundEmbedding(id, data) end
 
----Get lorebooks (raw JSON string)
+---Get lorebooks as a raw JSON string.
 ---@param id string
 ---@param search string
 ---@return string
 function getLoreBooksMain(id, search) end
 
 ---@class LoreBook
----@field key string                                     # Primary activation key
----@field secondkey string                               # Secondary activation key
----@field insertorder number                             # Insertion priority order
----@field comment string                                 # Lorebook name/comment
----@field content string                                 # Lorebook content (parsed with CBS)
----@field mode 'normal'|'folder'                         # Lorebook mode
----@field alwaysActive boolean                           # Whether always active
----@field selective boolean                              # Whether uses secondary key
----@field useRegex boolean?                              # Optional: use regex for key matching
----@field activationPercent number?                      # Optional: activation percentage
----@field bookVersion number?                            # Optional: book version
----@field id string?                                     # Optional: unique identifier
----@field folder string?                                 # Optional: folder path
+---@field key string Primary activation key.
+---@field secondkey string Secondary activation key.
+---@field insertorder number Insertion priority order.
+---@field comment string Lorebook name/comment.
+---@field content string Lorebook content.
+---@field mode 'normal'|'folder' Lorebook mode.
+---@field alwaysActive boolean Whether always active.
+---@field selective boolean Whether uses secondary key.
+---@field useRegex boolean? Optional: use regex for key matching.
+---@field activationPercent number? Optional: activation percentage.
+---@field bookVersion number? Optional: book version.
+---@field id string? Optional: unique identifier.
+---@field folder string? Optional: folder path.
 
----Get lorebooks (decoded table)
+---Get lorebooks as a decoded table.
 ---@param id string
 ---@param search string
 ---@return LoreBook[]
-function getLoreBooks(id, search)
-  return json.decode(getLoreBooksMain(id, search))
-end
+function getLoreBooks(id, search) end
 
 ---@class LoreBookOptions
----@field alwaysActive boolean?    # Optional: whether the lore is always active
----@field insertOrder number?      # Optional: insertion order priority
----@field key string?              # Optional: primary activation key
----@field secondKey string?        # Optional: secondary activation key
----@field regex boolean?           # Optional: whether the key is a regex
+---@field alwaysActive boolean? Optional: whether the lore is always active.
+---@field insertOrder number? Optional: insertion order priority.
+---@field key string? Optional: primary activation key.
+---@field secondKey string? Optional: secondary activation key.
+---@field regex boolean? Optional: whether the key is a regex.
 
----Upsert local lorebook
+---Upsert local lorebook.
 ---@param id string
 ---@param name string
 ---@param content string
@@ -448,79 +401,39 @@ end
 function upsertLocalLoreBook(id, name, content, options) end
 
 ---@class LoadedLoreBook
----@field data string         # Parsed lorebook content
----@field role 'user'|'char'  # Message role for the lorebook entry
+---@field data string Parsed lorebook content.
+---@field role 'user'|'char' Message role for the lorebook entry.
 
----Load lorebooks (raw JSON string, async)
+---Load lorebooks as a raw JSON string.
 ---@param id string
 ---@return Promise<string>
 function loadLoreBooksMain(id) end
 
----Load lorebooks (decoded table)
+---Load lorebooks as a decoded table.
 ---@param id string
 ---@return LoadedLoreBook[]
-function loadLoreBooks(id)
-  return json.decode(loadLoreBooksMain(id):await())
-end
+function loadLoreBooks(id) end
 
----Advanced LLM call (raw JSON prompt string, async)
+---Advanced LLM call with a raw JSON prompt string.
 ---@param id string
 ---@param promptStr string
 ---@param useMultimodal boolean?
 ---@return Promise<string>
 function axLLMMain(id, promptStr, useMultimodal) end
 
----Advanced LLM call (table prompt)
+---Advanced LLM call with a decoded prompt table.
 ---@param id string
 ---@param prompt LLMPrompt[]
 ---@param useMultimodal boolean?
 ---@return LLMResult
-function axLLM(id, prompt, useMultimodal)
-  useMultimodal = useMultimodal or false
-  return json.decode(axLLMMain(id, json.encode(prompt), useMultimodal):await())
-end
+function axLLM(id, prompt, useMultimodal) end
 
----Get character's last message
+---Get character's last message.
 ---@param id string
 ---@return string
 function getCharacterLastMessage(id) end
 
----Get user's last message
+---Get user's last message.
 ---@param id string
 ---@return string
 function getUserLastMessage(id) end
-
----Create async wrapper
----@param callback function
----@return function
-function async(callback)
-  return function(...)
-    local co = coroutine.create(callback)
-    local safe, result = coroutine.resume(co, ...)
-
-    return Promise.create(function(resolve, reject)
-      local checkresult
-      local step = function()
-        if coroutine.status(co) == "dead" then
-          local send = safe and resolve or reject
-          return send(result)
-        end
-
-        safe, result = coroutine.resume(co)
-        checkresult()
-      end
-
-      checkresult = function()
-        if safe and result == Promise.resolve(result) then
-          result:finally(step)
-        else
-          step()
-        end
-      end
-
-      checkresult()
-    end)
-  end
-end
-
-
