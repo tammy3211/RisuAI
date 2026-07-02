@@ -17,6 +17,7 @@
     import { language } from "../../lang"
     import { alertClear, alertConfirm, alertInput, alertNormal, alertRequestData, alertWait } from "../../ts/alert"
     import { ParseMarkdown, type CbsConditions, type simpleCharacterArgument } from "../../ts/parser/parser.svelte"
+    import { setChatVar } from "../../ts/parser/chatVar.svelte"
     import { getCurrentCharacter, getCurrentChat, setCurrentChat, type MessageGenerationInfo } from "../../ts/storage/database.svelte"
     import { selectedCharID } from "../../ts/stores.svelte"
     import { HideIconStore, ReloadGUIPointer, selIdState } from "../../ts/stores.svelte"
@@ -245,6 +246,51 @@
         }
     }
 
+    function getRisuInputFromEvent(event: Event) {
+        const target = event.target
+        if(!(target instanceof HTMLElement)){
+            return null
+        }
+
+        return target.closest('input[risu-var]') as HTMLInputElement | null
+    }
+
+    function getRisuInputVar(input: HTMLInputElement) {
+        const key = input.getAttribute('risu-var') ?? ''
+        if(!/^[A-Za-z0-9_.:-]{1,80}$/.test(key)){
+            return null
+        }
+
+        return key
+    }
+
+    function handleRisuInputWithin(event: Event) {
+        const input = getRisuInputFromEvent(event)
+        if(!input){
+            return false
+        }
+
+        const key = getRisuInputVar(input)
+        if(!key){
+            return false
+        }
+
+        const value = input.type === 'checkbox' ? (input.checked ? 'true' : 'false') : input.value
+        setChatVar(key, value)
+        return true
+    }
+
+    function handleRisuInputCommitWithin(event: Event) {
+        if(!handleRisuInputWithin(event)){
+            return
+        }
+
+        ReloadChatPointer.update((v) => {
+            v[idx] = (v[idx] ?? 0) + 1
+            return v
+        })
+    }
+
     let isBookmarked = $derived(
         DBState.db.characters[selIdState.selId]
             ?.chats[DBState.db.characters[selIdState.selId].chatPage]
@@ -400,7 +446,11 @@
         <span class="text chat-width chattext prose minw-0"
             class:prose-invert={$ColorSchemeTypeStore}
             bind:this={bodyRoot}
-            onclick={() => {
+            onclick={(event) => {
+            const target = event.target
+            if(target instanceof HTMLElement && target.closest('input[risu-var]')){
+                return
+            }
             if(DBState.db.clickToEdit && idx > -1){
                 editMode = true
             }
@@ -1033,7 +1083,10 @@
      data-chat-index={idx}
      data-chat-id={DBState.db.characters?.[selIdState.selId]?.chats?.[DBState.db.characters?.[selIdState.selId]?.chatPage]?.message?.[idx]?.chatId ?? ''}
      style={isLastMemory ? `border-top:${DBState.db.memoryLimitThickness}px solid rgba(98, 114, 164, 0.7);` : ''}
-     onclickcapture={handleButtonTriggerWithin}>
+     onclickcapture={handleButtonTriggerWithin}
+     oninputcapture={handleRisuInputWithin}
+     onchangecapture={handleRisuInputCommitWithin}
+     onblurcapture={handleRisuInputCommitWithin}>
     <div class="text-textcolor mt-1 ml-4 mr-4 mb-1 p-2 bg-transparent grow border-t-gray-900 border-opacity/30 border-transparent flexium items-start max-w-full" >
         {#if DBState.db.theme === 'mobilechat' && !blankMessage}
             <div class={role === 'user' ? "flex items-start w-full justify-end" : "flex items-start"}>

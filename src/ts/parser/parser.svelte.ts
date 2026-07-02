@@ -43,6 +43,9 @@ const mdHighlight = markdownit({
 md.disable(['code'])
 mdHighlight.disable(['code'])
 
+const risuInputVarRegex = /^[A-Za-z0-9_.:-]{1,80}$/
+const allowedRisuInputTypes = new Set(['text', 'number', 'range', 'checkbox'])
+
 DOMPurify.addHook("uponSanitizeElement", (node: HTMLElement, data) => {
     if (data.tagName === "iframe") {
        const src = node.getAttribute("src") || "";
@@ -75,6 +78,18 @@ DOMPurify.addHook("uponSanitizeElement", (node: HTMLElement, data) => {
 
 DOMPurify.addHook("uponSanitizeAttribute", (node, data) => {
     switch(data.attrName){
+        case 'risu-var':{
+            if(node.nodeName !== 'INPUT' || !risuInputVarRegex.test(data.attrValue)){
+                data.keepAttr = false
+            }
+            break
+        }
+        case 'type':{
+            if(node.nodeName === 'INPUT' && !allowedRisuInputTypes.has(data.attrValue.toLocaleLowerCase())){
+                data.attrValue = 'text'
+            }
+            break
+        }
         case 'style':{
             // Remove background-image URLs when hideAllImages is enabled
             if(DBState.db?.hideAllImages && data.attrValue){
@@ -778,8 +793,8 @@ export async function ParseMarkdown(
 
 export function trimMarkdown(data:string){
     return decodeStyle(DOMPurify.sanitize(data, {
-        ADD_TAGS: ["iframe", "style", "risu-style", "x-em", 'annotation', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac', 'msqrt'],
-        ADD_ATTR: ["allow", "allowfullscreen", "frameborder", "scrolling", "risu-ctrl" ,"risu-btn", 'risu-trigger', 'risu-mark', 'risu-id', 'x-hl-lang', 'x-hl-text'],
+        ADD_TAGS: ["iframe", "style", "risu-style", "x-em", 'annotation', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac', 'msqrt', 'input'],
+        ADD_ATTR: ["allow", "allowfullscreen", "frameborder", "scrolling", "risu-ctrl" ,"risu-btn", 'risu-trigger', 'risu-mark', 'risu-id', 'x-hl-lang', 'x-hl-text', 'risu-var', 'type', 'value', 'placeholder', 'min', 'max', 'step', 'checked', 'disabled'],
     }))
 }
 
