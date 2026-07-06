@@ -12,6 +12,7 @@ const fs = require('fs/promises')
 const crypto = require('crypto')
 const rateLimit = require('express-rate-limit');
 const { WebSocketServer } = require('ws');
+const { attachLuaLspWebSocket } = require('../lua-lsp/bridge.cjs');
 app.use(express.static(path.join(process.cwd(), 'dist'), {index: false}));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.raw({ type: 'application/octet-stream', limit: '100mb' }));
@@ -1426,6 +1427,9 @@ function setupProxyStreamWebSocket(server) {
     server.on('upgrade', async (req, socket, head) => {
         try {
             const reqUrl = new URL(req.url, `http://${req.headers.host}`);
+            if (reqUrl.pathname === '/lua-lsp') {
+                return;
+            }
             if (!reqUrl.pathname.startsWith('/proxy-stream-jobs/') || !reqUrl.pathname.endsWith('/ws')) {
                 socket.destroy();
                 return;
@@ -1506,6 +1510,7 @@ async function startServer() {
         if (httpsOptions) {
             // HTTPS
             server = https.createServer(httpsOptions, app);
+            attachLuaLspWebSocket(server);
             setupProxyStreamWebSocket(server);
             server.listen(port, () => {
                 console.log("[Server] HTTPS server is running.");
@@ -1514,6 +1519,7 @@ async function startServer() {
         } else {
             // HTTP
             server = http.createServer(app);
+            attachLuaLspWebSocket(server);
             setupProxyStreamWebSocket(server);
             server.listen(port, () => {
                 console.log("[Server] HTTP server is running.");

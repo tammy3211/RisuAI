@@ -2,6 +2,7 @@
     import { onMount, onDestroy } from 'svelte';
     import * as monaco from 'monaco-editor';
     import { registerCBSMonaco } from 'src/ts/gui/codearea/cbsMonaco';
+    import { attachLuaLsp, createLuaModel, registerLuaLsp } from 'src/ts/gui/codearea/luaLspClient';
     import jsonWorkerUrl from 'monaco-editor/esm/vs/language/json/json.worker?url';
     import cssWorkerUrl from 'monaco-editor/esm/vs/language/css/css.worker?url';
     import htmlWorkerUrl from 'monaco-editor/esm/vs/language/html/html.worker?url';
@@ -35,6 +36,7 @@
 
 
     registerCBSMonaco()
+    registerLuaLsp(monaco)
 
     interface Props {
         value: string;
@@ -54,11 +56,27 @@
 
     let container: HTMLDivElement;
     let editor: monaco.editor.IStandaloneCodeEditor;
+    let model: monaco.editor.ITextModel;
+    let luaLspDisposable: { dispose: () => void } | undefined;
+    let disposed = false;
+
+    function cleanup() {
+        if (disposed) {
+            return;
+        }
+        disposed = true;
+        luaLspDisposable?.dispose();
+        editor?.dispose();
+        model?.dispose();
+    }
 
     onMount(() => {
+        model = language === 'lua'
+            ? createLuaModel(value)
+            : monaco.editor.createModel(value, language);
+
         editor = monaco.editor.create(container, {
-            value,
-            language,
+            model,
             theme,
             readOnly: readonly,
             automaticLayout: true,
@@ -77,6 +95,10 @@
             },
         });
 
+        if (language === 'lua') {
+            luaLspDisposable = attachLuaLsp(model);
+        }
+
         editor.onDidChangeModelContent(() => {
             const newValue = editor.getValue();
             value = newValue;
@@ -84,12 +106,12 @@
         });
 
         return () => {
-            editor?.dispose();
+            cleanup();
         };
     });
 
     onDestroy(() => {
-        editor?.dispose();
+        cleanup();
     });
 
     // Sync external value changes into editor without triggering onDidChangeModelContent loop

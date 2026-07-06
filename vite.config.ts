@@ -3,10 +3,23 @@ import { svelte, vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import wasm from "vite-plugin-wasm";
 import strip from '@rollup/plugin-strip';
 import tailwindcss from '@tailwindcss/vite'
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const { attachLuaLspWebSocket } = require('./server/lua-lsp/bridge.cjs');
+
 // https://vitejs.dev/config/
 export default defineConfig(({command, mode}) => {
   return {
     plugins: [
+      command === 'serve' ? {
+        name: 'risu-lua-lsp',
+        configureServer(server) {
+          if (server.httpServer) {
+            attachLuaLspWebSocket(server.httpServer);
+          }
+        },
+      } : null,
       svelte({
         preprocess: vitePreprocess(),
         onwarn: (warning, handler) => {
