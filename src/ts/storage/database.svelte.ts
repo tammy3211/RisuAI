@@ -24,62 +24,8 @@ import {
 } from '../chatLoadPages';
 
 //APP_VERSION_POINT is to locate the app version in the database file for version bumping
-export let appVer = "2026.6.210" //<APP_VERSION_POINT>
+export let appVer = "2026.6.214" //<APP_VERSION_POINT>
 export let webAppSubVer = ''
-
-function normalizePromptRole(role: unknown): 'user'|'bot'|'system'|null {
-    if(role === 'user' || role === 'bot' || role === 'system'){
-        return role
-    }
-    if(role === 'assistant' || role === 'char'){
-        return 'bot'
-    }
-    return null
-}
-
-function normalizeCacheRole(role: unknown): 'user'|'assistant'|'system'|'all' {
-    if(role === 'user' || role === 'assistant' || role === 'system' || role === 'all'){
-        return role
-    }
-    if(role === 'bot' || role === 'char'){
-        return 'assistant'
-    }
-    return 'all'
-}
-
-function normalizePromptTemplate(template: PromptItem[]|null|undefined): PromptItem[]|null {
-    if(!Array.isArray(template)){
-        return null
-    }
-    const normalized = safeStructuredClone(template) as any[]
-    for(const item of normalized){
-        if(!item || typeof item !== 'object'){
-            continue
-        }
-        switch(item.type){
-            case 'plain':
-            case 'jailbreak':
-            case 'cot':{
-                item.role = normalizePromptRole(item.role) ?? 'system'
-                break
-            }
-            case 'persona':
-            case 'description':
-            case 'authornote':
-            case 'memory':{
-                if(item.role !== undefined && item.role !== null){
-                    item.role = normalizePromptRole(item.role) ?? 'system'
-                }
-                break
-            }
-            case 'cache':{
-                item.role = normalizeCacheRole(item.role)
-                break
-            }
-        }
-    }
-    return normalized as PromptItem[]
-}
 
 
 export function setDatabase(data:Database){
@@ -1412,7 +1358,6 @@ export interface loreBook{
     mode: 'multiple'|'constant'|'normal'|'child'|'folder',
     alwaysActive: boolean
     selective:boolean
-    role?: 'system'|'user'|'assistant'
     extentions?:{
         risu_case_sensitive:boolean
     }
@@ -2593,4 +2538,58 @@ export async function importPreset(f:{
         db.botPresets = []
     }
     db.botPresets.push(pre)
+}
+
+function normalizePromptRole(role: unknown): 'user'|'bot'|'system'|null {
+    if(role === 'user' || role === 'bot' || role === 'system'){
+        return role
+    }
+    if(role === 'assistant' || role === 'char'){
+        return 'bot'
+    }
+    return null
+}
+
+function normalizeCacheRole(role: unknown): 'user'|'assistant'|'system'|'all' {
+    if(role === 'user' || role === 'assistant' || role === 'system' || role === 'all'){
+        return role
+    }
+    if(role === 'bot' || role === 'char'){
+        return 'assistant'
+    }
+    return 'all'
+}
+
+function normalizePromptTemplate(template: PromptItem[]|null|undefined): PromptItem[]|null {
+    if(!Array.isArray(template)){
+        return null
+    }
+    const normalized = safeStructuredClone(template) as any[]
+    for(const item of normalized){
+        if(!item || typeof item !== 'object'){
+            continue
+        }
+        switch(item.type){
+            case 'plain':
+            case 'jailbreak':
+            case 'cot':{
+                item.role = normalizePromptRole(item.role) ?? 'system'
+                break
+            }
+            case 'persona':
+            case 'description':
+            case 'authornote':
+            case 'memory':{
+                if(item.role2 !== undefined && item.role2 !== null){
+                    item.role2 = normalizePromptRole(item.role2) ?? 'system'
+                }
+                break
+            }
+            case 'cache':{
+                item.role = normalizeCacheRole(item.role)
+                break
+            }
+        }
+    }
+    return normalized as PromptItem[]
 }
