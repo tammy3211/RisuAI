@@ -272,9 +272,9 @@ function getFullChat(id) end
 function sleep(id, time) end
 
 ---Parse CBS.
----@param id string
 ---@param value string
-function cbs(id, value) end
+---@return string
+function cbs(value) end
 
 ---Set full chat from a raw JSON string.
 ---@param id string
