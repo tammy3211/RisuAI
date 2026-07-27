@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { tick } from "svelte"
     import isEqual from "lodash/isEqual"
     import { DBState } from 'src/ts/stores.svelte'
     import { sleep } from "src/ts/util"
@@ -8,6 +9,7 @@
     import { getModuleAssets } from "src/ts/process/modules";
     import { getCurrentCharacter } from "src/ts/storage/database.svelte";
     import { getFileSrc } from "src/ts/globalApi.svelte";
+    import { getChatVar } from "../../ts/parser/chatVar.svelte";
 
     interface Props {
         character?: simpleCharacterArgument|string|null
@@ -246,15 +248,43 @@
         }
     }
 
+    const initializeRisuInputs = () => {
+        if(!bodyRoot){
+            return
+        }
+
+        const inputs = bodyRoot.querySelectorAll('input[risu-var]') as NodeListOf<HTMLInputElement>
+        inputs.forEach((input) => {
+            const key = input.getAttribute('risu-var') ?? ''
+            if(!/^[A-Za-z0-9_.:-]{1,80}$/.test(key)){
+                return
+            }
+
+            const chatValue = getChatVar(key)
+            const value = chatValue === 'null' ? '' : chatValue
+            if(input.type === 'checkbox'){
+                input.checked = value === 'true'
+                return
+            }
+            input.value = value
+        })
+    }
+
     let markParsingResult = $derived.by(() => markParsing(msgDisplay, character, idx))
 
     $effect(() => {
         if(shouldRenderRawStreaming){
             return
         }
-        markParsingResult
-        checkImg()
-        markParsingResult.then(checkImg)
+        const parsingResult = markParsingResult
+        parsingResult.then(async () => {
+            await tick()
+            if(parsingResult !== markParsingResult){
+                return
+            }
+            checkImg()
+            initializeRisuInputs()
+        })
     })
 </script>
 

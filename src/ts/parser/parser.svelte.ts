@@ -90,6 +90,12 @@ DOMPurify.addHook("uponSanitizeAttribute", (node, data) => {
             }
             break
         }
+        case 'value':{
+            if(node.nodeName === 'INPUT'){
+                data.keepAttr = false
+            }
+            break
+        }
         case 'style':{
             // Remove background-image URLs when hideAllImages is enabled
             if(DBState.db?.hideAllImages && data.attrValue){
@@ -794,7 +800,7 @@ export async function ParseMarkdown(
 export function trimMarkdown(data:string){
     return decodeStyle(DOMPurify.sanitize(data, {
         ADD_TAGS: ["iframe", "style", "risu-style", "x-em", 'annotation', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac', 'msqrt', 'input'],
-        ADD_ATTR: ["allow", "allowfullscreen", "frameborder", "scrolling", "risu-ctrl" ,"risu-btn", 'risu-trigger', 'risu-mark', 'risu-id', 'x-hl-lang', 'x-hl-text', 'risu-var', 'type', 'value', 'placeholder', 'min', 'max', 'step', 'checked', 'disabled'],
+        ADD_ATTR: ["allow", "allowfullscreen", "frameborder", "scrolling", "risu-ctrl" ,"risu-btn", 'risu-trigger', 'risu-mark', 'risu-id', 'x-hl-lang', 'x-hl-text', 'risu-var', 'type', 'placeholder', 'min', 'max', 'step', 'checked', 'disabled'],
     }))
 }
 
