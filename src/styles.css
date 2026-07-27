@@ -302,7 +302,7 @@ body {
   color: var(--FontColorQuote2);
 }
 
-.chattext input[risu-var] {
+.x-risu-input-default {
   color: var(--risu-theme-textcolor);
   background-color: color-mix(in srgb, transparent 85%, var(--risu-theme-darkbutton) 15%);
   border: 1px solid var(--risu-theme-darkborderc);
@@ -313,19 +313,10 @@ body {
   outline: none;
 }
 
-.chattext input[risu-var]:focus {
+.x-risu-input-default:focus {
   border-color: var(--risu-theme-borderc);
   box-shadow: 0 0 0 2px color-mix(in srgb, transparent 70%, var(--risu-theme-borderc) 30%);
 }
-
-.chattext input[risu-var][type="checkbox"] {
-  min-width: auto;
-  width: 1rem;
-  height: 1rem;
-  padding: 0;
-  vertical-align: middle;
-}
-
 .strokeme {
   color: #000;
   text-shadow: -1px -1px 0 white, 1px -1px 0 white, -1px 1px 0 white, 1px 1px 0 white;

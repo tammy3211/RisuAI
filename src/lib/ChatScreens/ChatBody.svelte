@@ -8,7 +8,6 @@
     import { getModuleAssets } from "src/ts/process/modules";
     import { getCurrentCharacter } from "src/ts/storage/database.svelte";
     import { getFileSrc } from "src/ts/globalApi.svelte";
-    import { getChatVar } from "src/ts/parser/chatVar.svelte";
 
     interface Props {
         character?: simpleCharacterArgument|string|null
@@ -247,36 +246,6 @@
         }
     }
 
-    function syncRisuInputs() {
-        if(!bodyRoot){
-            return
-        }
-
-        const inputs = bodyRoot.querySelectorAll('input[risu-var]') as NodeListOf<HTMLInputElement>
-        inputs.forEach((input) => {
-            if(document.activeElement === input){
-                return
-            }
-
-            const key = input.getAttribute('risu-var') ?? ''
-            if(!/^[A-Za-z0-9_.:-]{1,80}$/.test(key)){
-                return
-            }
-
-            const value = getChatVar(key)
-            if(value === 'null'){
-                return
-            }
-
-            if(input.type === 'checkbox'){
-                input.checked = value === 'true' || value === '1'
-                return
-            }
-
-            input.value = value
-        })
-    }
-
     let markParsingResult = $derived.by(() => markParsing(msgDisplay, character, idx))
 
     $effect(() => {
@@ -285,11 +254,7 @@
         }
         markParsingResult
         checkImg()
-        syncRisuInputs()
-        markParsingResult.then(() => {
-            checkImg()
-            syncRisuInputs()
-        })
+        markParsingResult.then(checkImg)
     })
 </script>
 
