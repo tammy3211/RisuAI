@@ -302,21 +302,6 @@ body {
   color: var(--FontColorQuote2);
 }
 
-.x-risu-input-default {
-  color: var(--risu-theme-textcolor);
-  background-color: color-mix(in srgb, transparent 85%, var(--risu-theme-darkbutton) 15%);
-  border: 1px solid var(--risu-theme-darkborderc);
-  border-radius: 0.375rem;
-  padding: 0.25rem 0.5rem;
-  min-width: 6rem;
-  max-width: 100%;
-  outline: none;
-}
-
-.x-risu-input-default:focus {
-  border-color: var(--risu-theme-borderc);
-  box-shadow: 0 0 0 2px color-mix(in srgb, transparent 70%, var(--risu-theme-borderc) 30%);
-}
 .strokeme {
   color: #000;
   text-shadow: -1px -1px 0 white, 1px -1px 0 white, -1px 1px 0 white, 1px 1px 0 white;

@@ -877,26 +877,6 @@ export function registerCBS(arg:CBSRegisterArg) {
     });
 
     registerFunction({
-        name: 'input',
-        callback: (str, matcherArg, args, vars) => {
-            const key = args[0] ?? ''
-            if(!/^[A-Za-z0-9_.:-]{1,80}$/.test(key)){
-                return ''
-            }
-            const placeholder = args[1]
-            const placeholderAttr = placeholder === undefined
-                ? ''
-                : ` placeholder="${placeholder
-                    .replace(/&/g, '&amp;')
-                    .replace(/"/g, '&quot;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')}"`
-            return `<input class="input-default" type="text" risu-var="${key}"${placeholderAttr} />`
-        },
-        alias: [],
-        description: 'Creates an input element bound to a persistent chat variable. The rendered input is initialized from the current variable, and typing updates that variable. The optional second argument is shown as a placeholder when the variable is null or empty.\n\nUsage:: {{input::variableName}} or {{input::variableName::placeholder}}',
-    });
-    registerFunction({
         name: 'risu',
         callback: (str, matcherArg, args, vars) => {
             const size = args[0] || '45'
