@@ -22,11 +22,15 @@ import {
     DEFAULT_CHAT_LOAD_INITIAL_PAGES,
     normalizeChatLoadPages,
 } from '../chatLoadPages';
+import { setDatabaseLite as setDatabaseState } from './databaseState.svelte';
+
+export { onDatabaseUpdate } from './databaseState.svelte';
 
 //APP_VERSION_POINT is to locate the app version in the database file for version bumping
 export let appVer = "2026.6.214" //<APP_VERSION_POINT>
 export let webAppSubVer = ''
 
+export type StreamingDisplayOptimizationMode = 'off'|'balanced'|'strong'
 
 export function setDatabase(data:Database){
     if(checkNullish(data.characters)){
@@ -689,6 +693,8 @@ export function setDatabase(data:Database){
     data.newMessageButtonStyle ??= 'bottom-center'
     data.chatLoadInitialPages = normalizeChatLoadPages(data.chatLoadInitialPages, DEFAULT_CHAT_LOAD_INITIAL_PAGES)
     data.chatLoadAdditionalPages = normalizeChatLoadPages(data.chatLoadAdditionalPages, DEFAULT_CHAT_LOAD_ADDITIONAL_PAGES)
+    data.streamingDisplayOptimizationMode ??= (data as {largeChatPerformanceMode?: StreamingDisplayOptimizationMode}).largeChatPerformanceMode ?? 'off'
+    delete (data as {largeChatPerformanceMode?: unknown}).largeChatPerformanceMode
     data.echoMessage ??= "Echo Message"
     data.echoDelay ??= 0
     if(!isNodeServer && !isTauri){
@@ -709,6 +715,12 @@ export function setDatabase(data:Database){
     data.moveInsteadOfCopyOnCMPConvert ??= false
     data.skipSavingAssetsOnWebSync ??= true
     data.coldstorage ??= data?.plugins?.length === 0
+    for(const char of data.characters){
+        for(const chat of char.chats ?? []){
+            chat.isStreaming = false
+            chat.activeStreamingDisplayOptimizationMode = undefined
+        }
+    }
     changeLanguage(data.language)
 
     setDatabaseLite(data)
@@ -716,45 +728,36 @@ export function setDatabase(data:Database){
 }
 
 export function setDatabaseLite(data:Database){
-    if(data.characters){        
+    if(data === DBState.db){
+        setDatabaseState(data)
+        return
+    }
+    if(data.characters){
         data.characters = new Proxy(data.characters, {
             get(target, prop, receiver) {
                 if (prop === 'toJSON') {
                     return () => {
-                        // JSON.stringify 시 0번 인덱스를 빈 캐릭터로 만든 복사본 반환
-                        // 이렇게 하면 DB 파일에 Save 폴더 봇 데이터가 저장되지 않음
-                        // console.log('[Proxy toJSON] Creating save copy, original length:', target.length);
-                        const copy = [...target];
+                        const copy = [...target]
                         if (copy.length > 0) {
-                            copy[0] = createBlankChar();
+                            copy[0] = createBlankChar()
                         }
-                        // console.log('[Proxy toJSON] Save copy length:', copy.length);
-                        return copy;
+                        return copy
                     }
                 }
-                if (prop === '0') {
-                    // 항상 실제 배열 값 반환 (Svelte 반응성 추적)
-                    // currentSaveFolderBot 로드 시 실제 배열에도 저장되므로 동기화됨
-                    return Reflect.get(target, prop, receiver);
-                }
-                return Reflect.get(target, prop, receiver);
+                return Reflect.get(target, prop, receiver)
             },
             set(target, prop, value, receiver) {
                 if (prop === '0') {
-                    const current = get(currentSaveFolderBot);
+                    const current = get(currentSaveFolderBot)
                     if (current) {
-                        // currentSaveFolderBot 업데이트
-                        currentSaveFolderBot.set({ ...current, character: value, isDirty: true });
-                        const result = Reflect.set(target, prop, value, receiver);
-                        return result;
+                        currentSaveFolderBot.set({ ...current, character: value, isDirty: true })
                     }
-                    // Save 폴더 봇이 아닐 때만 실제 배열에 저장
                 }
-                return Reflect.set(target, prop, value, receiver);
+                return Reflect.set(target, prop, value, receiver)
             }
-        });
+        })
     }
-    DBState.db = data
+    setDatabaseState(data)
 }
 
 interface getDatabaseOptions{
@@ -1285,6 +1288,7 @@ export interface Database{
     newMessageButtonStyle?: string
     chatLoadInitialPages?: number
     chatLoadAdditionalPages?: number
+    streamingDisplayOptimizationMode?: StreamingDisplayOptimizationMode
     pluginDevelopMode?: boolean
     echoMessage?:string
     echoDelay?:number
@@ -1863,6 +1867,7 @@ export interface Chat{
     lastMemory?:string
     suggestMessages?:string[]
     isStreaming?:boolean
+    activeStreamingDisplayOptimizationMode?:StreamingDisplayOptimizationMode
     scriptstate?:{[key:string]:string|number|boolean}
     modules?:string[]
     id?:string
