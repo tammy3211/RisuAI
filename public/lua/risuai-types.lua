@@ -355,19 +355,25 @@ function hash(id, value) end
 ---@field success boolean Whether the LLM call succeeded.
 ---@field result string The LLM response or error message.
 
+---Optional behavior for direct LLM calls.
+---@class LLMCallOptions
+---@field streaming boolean? Whether to request and internally collect a streamed response.
+
 ---Call LLM with a raw JSON prompt string.
 ---@param id string
 ---@param promptStr string
 ---@param useMultimodal boolean?
+---@param optionsStr string? JSON-encoded LLMCallOptions.
 ---@return Promise<string>
-function LLMMain(id, promptStr, useMultimodal) end
+function LLMMain(id, promptStr, useMultimodal, optionsStr) end
 
 ---Call LLM with a decoded prompt table.
 ---@param id string
 ---@param prompt LLMPrompt[]
 ---@param useMultimodal boolean?
+---@param options LLMCallOptions?
 ---@return LLMResult
-function LLM(id, prompt, useMultimodal) end
+function LLM(id, prompt, useMultimodal, options) end
 
 ---Simple LLM call.
 ---@param id string
@@ -494,15 +500,17 @@ function loadLoreBooks(id) end
 ---@param id string
 ---@param promptStr string
 ---@param useMultimodal boolean?
+---@param optionsStr string? JSON-encoded LLMCallOptions.
 ---@return Promise<string>
-function axLLMMain(id, promptStr, useMultimodal) end
+function axLLMMain(id, promptStr, useMultimodal, optionsStr) end
 
 ---Advanced LLM call with a decoded prompt table.
 ---@param id string
 ---@param prompt LLMPrompt[]
 ---@param useMultimodal boolean?
+---@param options LLMCallOptions?
 ---@return LLMResult
-function axLLM(id, prompt, useMultimodal) end
+function axLLM(id, prompt, useMultimodal, options) end
 
 ---Get character's last message.
 ---@param id string
