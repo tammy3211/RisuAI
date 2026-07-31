@@ -2,6 +2,7 @@
     import { alertGenerationInfoStore } from "../../ts/alert";
     
     import { DBState } from 'src/ts/stores.svelte';
+    import { parseExternalLinkURL } from 'src/ts/alert';
     import { getCharImage } from '../../ts/characters';
     import { ParseMarkdown } from '../../ts/parser/parser.svelte';
     import BarIcon from '../SideBars/BarIcon.svelte';
@@ -117,6 +118,17 @@
         }
     }
 
+    function confirmExternalLink(){
+        const url = parseExternalLinkURL($alertStore.msg)
+        alertStore.set({
+            type: 'none',
+            msg: ''
+        })
+        if(url){
+            openURL(url.href)
+        }
+    }
+
     $effect.pre(() => {
         showDetails = false;
         translatedStackTrace = '';
@@ -193,6 +205,8 @@
                 <h2 class="text-red-700 mt-0 mb-2 w-40 max-w-full">Error</h2>
             {:else if $alertStore.type === 'ask'}
                 <h2 class="text-green-700 mt-0 mb-2 w-40 max-w-full">Confirm</h2>
+            {:else if $alertStore.type === 'externalLink'}
+                <h2 class="text-yellow-500 mt-0 mb-2 max-w-full">{language.externalLinkWarningTitle}</h2>
             {:else if $alertStore.type === 'pluginconfirm'}
                 <h2 class="text-green-700 mt-0 mb-2 w-40 max-w-full">Plugin Import</h2>
             {:else if $alertStore.type === 'selectChar'}
@@ -207,6 +221,15 @@
                             {@html msg}                        
                         {/await}
                     </span>
+                </div>
+            {:else if $alertStore.type === 'externalLink'}
+                {@const externalUrl = parseExternalLinkURL($alertStore.msg)}
+                <div class="text-textcolor flex flex-col gap-2">
+                    <span>{language.externalLinkWarning}</span>
+                    {#if externalUrl}
+                        <strong>{externalUrl.hostname}</strong>
+                        <span class="text-gray-400 text-sm break-all">{externalUrl.href}</span>
+                    {/if}
                 </div>
             {:else if $alertStore.type === 'tos'}
                 <!-- svelte-ignore a11y_missing_attribute -->
@@ -309,6 +332,20 @@
                             msg: 'no'
                         })
                     }}>NO</Button>
+                </div>
+            {:else if $alertStore.type === 'externalLink'}
+                <div class="flex gap-2 w-full">
+                    <Button className="mt-4 grow" onclick={confirmExternalLink}>
+                        {language.externalLinkOpen}
+                    </Button>
+                    <Button styled="outlined" className="mt-4 grow" onclick={() => {
+                        alertStore.set({
+                            type: 'none',
+                            msg: ''
+                        })
+                    }}>
+                        {language.cancel}
+                    </Button>
                 </div>
             {:else if $alertStore.type === 'tos' && import.meta.env.VITE_RISU_LEGAL_CONFIGURED}
                 <div class="flex gap-2 w-full">

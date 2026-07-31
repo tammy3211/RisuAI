@@ -5,6 +5,7 @@
     import { longpress } from "src/ts/gui/longtouch"
     import { getModelInfo } from "src/ts/model/modellist"
     import { runLuaButtonTrigger } from 'src/ts/process/scriptings'
+    import { handleExternalLinkClick } from 'src/ts/gui/externalLink'
     import { risuChatParser } from "src/ts/process/scripts"
     import { runTrigger } from 'src/ts/process/triggers'
     import { sayTTS } from "src/ts/process/tts"
@@ -228,7 +229,11 @@
         }
     }
 
-    async function handleButtonTriggerWithin(event: UIEvent) {
+    async function handleButtonTriggerWithin(event: MouseEvent) {
+        if(handleExternalLinkClick(event)){
+            return
+        }
+
         const currentChar = getCurrentCharacter()
         if(!currentChar || currentChar.type === 'group'){
             return

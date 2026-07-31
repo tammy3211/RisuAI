@@ -9,7 +9,8 @@ export interface alertData{
     type: 'error'|'normal'|'none'|'ask'|'wait'|'selectChar'
             |'input'|'toast'|'wait2'|'markdown'|'select'|'login'
             |'tos'|'cardexport'|'requestdata'|'addchar'|'hypaV2'|'selectModule'
-            |'chatOptions'|'pukmakkurit'|'branches'|'progress'|'pluginconfirm'|'requestlogs',
+            |'chatOptions'|'pukmakkurit'|'branches'|'progress'|'pluginconfirm'|'requestlogs'
+            |'externalLink',
     msg: string,
     submsg?: string
     datalist?: [string, string][],
@@ -202,6 +203,31 @@ export async function alertConfirm(msg:string){
     await waitAlert()
 
     return get(alertStoreImported).msg === 'yes'
+}
+
+export function parseExternalLinkURL(value:string):URL|null{
+    try {
+        const url = new URL(value)
+        if(url.protocol !== 'http:' && url.protocol !== 'https:'){
+            return null
+        }
+        return url
+    } catch {
+        return null
+    }
+}
+
+export function alertExternalLink(value:string){
+    const url = parseExternalLinkURL(value)
+    if(!url){
+        return false
+    }
+
+    alertStoreImported.set({
+        type: 'externalLink',
+        msg: url.href,
+    })
+    return true
 }
 
 export async function alertPluginConfirm(msg:string){
