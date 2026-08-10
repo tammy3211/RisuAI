@@ -22,9 +22,6 @@ import {
     DEFAULT_CHAT_LOAD_INITIAL_PAGES,
     normalizeChatLoadPages,
 } from '../chatLoadPages';
-import { setDatabaseLite as setDatabaseState } from './databaseState.svelte';
-
-export { onDatabaseUpdate } from './databaseState.svelte';
 
 //APP_VERSION_POINT is to locate the app version in the database file for version bumping
 export let appVer = "2026.6.215" //<APP_VERSION_POINT>
@@ -391,6 +388,7 @@ export function setDatabase(data:Database){
     data.animationSpeed ??= 0.4
     data.colorScheme ??= safeStructuredClone(defaultColorScheme)
     data.colorSchemeName ??= 'default'
+    data.customColorScheme ??= safeStructuredClone(data.colorSchemeName === 'custom' ? data.colorScheme : defaultColorScheme)
     data.NAIsettings.starter ??= ""
     data.hypaModel ??= 'MiniLM'
     data.mancerHeader ??= ''
@@ -724,40 +722,10 @@ export function setDatabase(data:Database){
     changeLanguage(data.language)
 
     setDatabaseLite(data)
-    // DBState.db = data
 }
 
 export function setDatabaseLite(data:Database){
-    if(data === DBState.db){
-        setDatabaseState(data)
-        return
-    }
-    if(data.characters){
-        data.characters = new Proxy(data.characters, {
-            get(target, prop, receiver) {
-                if (prop === 'toJSON') {
-                    return () => {
-                        const copy = [...target]
-                        if (copy.length > 0) {
-                            copy[0] = createBlankChar()
-                        }
-                        return copy
-                    }
-                }
-                return Reflect.get(target, prop, receiver)
-            },
-            set(target, prop, value, receiver) {
-                if (prop === '0') {
-                    const current = get(currentSaveFolderBot)
-                    if (current) {
-                        currentSaveFolderBot.set({ ...current, character: value, isDirty: true })
-                    }
-                }
-                return Reflect.set(target, prop, value, receiver)
-            }
-        })
-    }
-    setDatabaseState(data)
+    DBState.db = data
 }
 
 interface getDatabaseOptions{
@@ -997,6 +965,7 @@ export interface Database{
     hideRealm:boolean
     colorScheme:ColorScheme
     colorSchemeName:string
+    customColorScheme:ColorScheme
     promptTemplate?:PromptItem[]
     forceProxyAsOpenAI?:boolean
     hypaModel:HypaModel
@@ -1535,6 +1504,7 @@ export interface character{
     prebuiltAssetStyle?:string
     prebuiltAssetExclude?:string[]
     modules?:string[]
+    moduleNamespace?:string
     coldstorage?:string
     coldStoragedChats?:string[]
     customModuleToggle?:string
