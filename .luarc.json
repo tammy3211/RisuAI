@@ -4,15 +4,12 @@
     "version": "Lua 5.4",
     "path": [
       "?.lua",
-      "?/init.lua",
-      "save/*/scripts/triggerscript/?.lua",
-      "save/*/scripts/triggerscript/src/?.lua"
+      "?/init.lua"
     ]
   },
   "workspace": {
     "library": [
-      "public/lua",
-      "./save/"
+      "public/lua"
     ],
     "checkThirdParty": false,
     "useGitIgnore": false,
