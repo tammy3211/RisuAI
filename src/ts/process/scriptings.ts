@@ -7,7 +7,7 @@ import { get } from "svelte/store";
 import { DBState, ReloadChatPointer, ReloadGUIPointer, selectedCharID } from "../stores.svelte";
 import { alertSelect, alertError, alertInput, alertNormal, alertConfirm } from "../alert";
 import { HypaProcesser } from "./memory/hypamemory";
-import { generateAIImage } from "./stableDiff";
+import { generateAIImage, type ImageGenerationOptions } from "./stableDiff";
 import { writeInlayImage, getInlayAsset } from "./files/inlays";
 import type { OpenAIChat, MultiModal } from "./index.svelte";
 import { requestChatData, type StreamResponseChunk } from "./request/request";
@@ -76,7 +76,7 @@ export async function runScripted(code:string, arg:{
         await ensureLuaFactory()
     }
     let ScriptingEngineState = await getOrCreateEngineState(mode, type);
-    
+
     return await ScriptingEngineState.mutex.runExclusive(async () => {
         ScriptingEngineState.chat = chat
         ScriptingEngineState.setVar = setVar
@@ -88,7 +88,7 @@ export async function runScripted(code:string, arg:{
                 console.log('Creating new Lua engine for mode:', mode)
                 ScriptingEngineState.engine?.global.close()
                 ScriptingEngineState.code = code
-                ScriptingEngineState.engine = await luaFactory.createEngine({injectObjects: true})
+                ScriptingEngineState.engine = await luaFactory.createEngine({injectObjects: true, enableProxy: false})
                 const luaEngine = ScriptingEngineState.engine
                 declareAPI = (name:string, func:Function) => {
                     luaEngine.global.set(name, func)
@@ -389,11 +389,16 @@ export async function runScripted(code:string, arg:{
                 }
             })
 
-            declareAPI('generateImage', async (id:string, value:string, negValue:string = '') => {
+            declareAPI('generateImage', async (id:string, value:string, negValue:string = '', options?:ImageGenerationOptions) => {
                 if(!ScriptingLowLevelIds.has(id)){
                     return
                 }
-                const gen = await generateAIImage(value, char as character, negValue, 'inlay')
+                const orientation = options?.orientation
+                if(orientation !== undefined && orientation !== 'landscape' && orientation !== 'portrait'){
+                    return 'Error: Image orientation must be landscape or portrait, received ' + orientation
+                }
+
+                const gen = await generateAIImage(value, char as character, negValue, 'inlay', options)
                 if(!gen){
                     return 'Error: Image generation failed'
                 }
@@ -1113,6 +1118,13 @@ export async function runScripted(code:string, arg:{
                         }
                         break
                     }
+                    case 'onFormSubmit':{
+                        const func = luaEngine.global.get('onFormSubmit')
+                        if(func){
+                            res = await func(accessKey, data, JSON.stringify(meta))
+                        }
+                        break
+                    }
                     case 'editRequest':
                     case 'editDisplay':
                     case 'editInput':
@@ -1474,10 +1486,12 @@ export async function runLuaEditTrigger<T extends string|OpenAIChat[]>(char:char
     }
 }
 
-export async function runLuaButtonTrigger(char:character|groupChat|simpleCharacterArgument, data:string):Promise<any>{
+export async function runLuaInteractionTrigger(type: 'button'|'form', char: character|simpleCharacterArgument, triggerKey: string, meta?: object): Promise<any> {
+    const mode = type === 'button' ? 'onButtonClick' : 'onFormSubmit'
+
     let runResult
     try {
-        const triggers = char.type === 'group' ? getModuleTriggers() : char.triggerscript.map<triggerscript>((v) => ({
+        const triggers = char.triggerscript.map<triggerscript>((v) => ({
             ...v,
             lowLevelAccess: char.type !== 'simple' ? char.lowLevelAccess ?? false : false
         })).concat(getModuleTriggers())
@@ -1485,10 +1499,11 @@ export async function runLuaButtonTrigger(char:character|groupChat|simpleCharact
         for(let trigger of triggers){
             if(trigger?.effect?.[0]?.type === 'triggerlua'){
                 runResult = await runScripted(trigger.effect[0].code, {
-                    char: char,
+                    char,
+                    data: triggerKey,
                     lowLevelAccess: trigger.lowLevelAccess,
-                    mode: 'onButtonClick',
-                    data: data
+                    meta,
+                    mode,
                 })
             }
         }

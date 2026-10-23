@@ -65,6 +65,15 @@
   "backgroundHTML": {
     "$ref": "content/backgroundHTML.md"
   },
+  "onboarding": {
+    "enabled": false,
+    "mode": "form",
+    "title": "",
+    "description": "",
+    "questions": [],
+    "html": "",
+    "floatingButton": false
+  },
   "additionalText": "",
   "depth_prompt": {
     "prompt": "",

@@ -1,4 +1,4 @@
-import type { customscript, loreBook, loreSettings, triggerscript } from "src/ts/storage/database.svelte"
+import type { CharacterOnboarding, customscript, loreBook, loreSettings, triggerscript } from "src/ts/storage/database.svelte"
 import { v4 as uuid } from 'uuid';
 import { defaults, defaultsDeep } from 'lodash';
 
@@ -36,6 +36,7 @@ export interface MockCharacterDB {
   utilityBot: boolean
   sdData: [string, string][]
   backgroundHTML?: string
+  onboarding?: CharacterOnboarding
   additionalText: string
   largePortrait?: boolean
   inlayViewScreen?: boolean
@@ -118,6 +119,7 @@ const CHARACTER_KEYS = [
   'utilityBot',
   'sdData',
   'backgroundHTML',
+  'onboarding',
   'additionalText',
   'largePortrait',
   'inlayViewScreen',
@@ -178,6 +180,15 @@ export function createMockCharacter(): MockCharacterDB {
     lowLevelAccess: false,
     customModuleToggle: "",
     additionalText: "",
+    onboarding: {
+      enabled: false,
+      mode: 'form',
+      title: '',
+      description: '',
+      questions: [],
+      html: '',
+      floatingButton: false,
+    },
 
     // Modules
     customscript: [],

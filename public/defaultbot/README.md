@@ -99,6 +99,11 @@ This document provides the file structure and field descriptions needed when cre
 
 ### Extensions Fields
 
+#### `onboarding`
+- **Description**: Optional character onboarding shown when starting a chat.
+- **Fields**: `enabled`, `mode` (`form` or `html`), `title`, `description`, `questions`, `html`, `floatingButton`.
+- **Default**: Disabled, with empty content and questions. Uses the upstream `CharacterOnboarding` type.
+
 #### `bias`
 - **Description**: Bias for LLM settings
 - **Status**: Not often used as recent models don't support it
